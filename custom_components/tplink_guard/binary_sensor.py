@@ -11,7 +11,6 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -81,14 +80,11 @@ class TPLinkGuardBinarySensor(CoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
-        # No "tplink_guard_" prefix: without a suggested id HA 2026.11
-        # prepends the device name ("TPLink Guard") to the generated id.
-        self._attr_suggested_object_id = OBJECT_IDS[description.key]
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry_id)},
-            name="TPLink Guard",
-            manufacturer="TP-Link",
-        )
+        # Diagnostic entities stay standalone (no device association):
+        # HA 2026.11 builds the entity id as "<device name> <entity name>",
+        # so a device would force the tplink_guard_ prefix. Without a
+        # device the id is derived from the entity name alone.
+        self._attr_device_info = None
 
     @property
     def is_on(self) -> bool:

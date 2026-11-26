@@ -214,7 +214,10 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         if description.key == "guest_visit":
             # Keep the legacy Node-RED identity: entity_id sensor.guest_visit_count
             # with friendly name 来访客人 (no device prefix).
-            self._attr_suggested_object_id = OBJECT_IDS[description.key]
+            # HA 2026.11 ignores suggested_object_id and builds the id as
+            # "<device name> <entity name>", so this entity must have NO
+            # device association to avoid the tplink_guard_ prefix.
+            self._attr_device_info = None
             self._attr_has_entity_name = False
             self._attr_name = description.name
             self._attr_native_unit_of_measurement = "人"
