@@ -1,0 +1,116 @@
+# TPLink Guard — Home Assistant 自定义集成
+
+周期登录 TP-Link 路由器，读取在线终端表并与本地名单比对：
+
+- **不在白名单中的终端一律视为陌生**
+- 白名单内还可以单独标记「关注终端」，用于重点盯防
+- 关注终端名单通过实体属性暴露，自动化 / Node-RED 可直接读取，无需在脚本里硬编码设备信息
+
+> 本项目为社区作品，与 TP-Link 官方无关。仅在本机轮询路由器，不向任何外部服务发送数据。
+
+## 功能
+
+- 使用路由器原生 SLP JSON 接口（`stok` 登录 + `/ds` 数据接口），账号 / 密码 / 端口可配置
+- 刷新周期可配置（默认 60 秒，最小 5 秒）
+- 读取 `host_management/host_info` 在线终端表；另读取 `dhcpd/dhcp_static` 统计静态分配数
+- **白名单 TXT**：每行一个 MAC，可用 `#` 加备注，不使用引号
+- **关注名单 TXT**：格式相同，但只有同时存在于白名单中的设备才算关注终端
+- 备注支持 `姓名|昵称|设备名`，解析后随实体属性 `watchlist` 输出
+- 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
+- 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
+- 仅生成聚合实体，不逐台创建设备传感器
+
+## 前置要求
+
+- 一台可通过 Web 管理接口登录的 TP-Link 路由器，管理端口可配置（默认 `80`；部分机型使用其它端口，请以实际设备为准）
+- Home Assistant（需支持自定义集成与配置向导）
+
+## 安装
+
+1. 把 `custom_components/tplink_guard/` 整个目录复制到 HA 配置目录下的 `custom_components/`。
+2. 把 `examples/` 下的两个示例文件复制到 HA 配置目录，并改名为：
+   - `tplink_guard_whitelist.txt`（白名单）
+   - `tplink_guard_watchlist.txt`（关注名单）
+   然后按你自己的终端填写。
+3. 重启 Home Assistant。
+4. 在 HA 中进入「设置 → 设备与服务 → 添加集成」，搜索 `TPLink Guard`，按提示填写：
+   - 主机地址、管理端口、用户名、密码
+   - 刷新周期（秒）
+   - 白名单 / 关注名单文件路径（默认 `/config/tplink_guard_whitelist.txt` 与 `/config/tplink_guard_watchlist.txt`）
+   - 匹配方式（建议 `both`）
+
+> 密码只保存在 HA 的 `.storage/core.config_entries` 中，不会写入本项目的日志或文件。
+
+## 实体
+
+实体名称与 ID 全部使用英文，术语统一为 `terminal` / `watched`。
+
+| 实体 ID | 英文名 | 含义 |
+|---|---|---|
+| `sensor.tplink_guard_online_terminal_count` | Online Terminal Count | 当前在线终端数 |
+| `sensor.tplink_guard_whitelist_online_count` | Whitelist Online Count | 白名单内在线数 |
+| `sensor.tplink_guard_unknown_terminal_count` | Unknown Terminal Count | 陌生在线终端数 |
+| `sensor.tplink_guard_unknown_terminal_ip` | Unknown Terminal IP | 陌生终端 IP 列表 |
+| `sensor.tplink_guard_whitelist_terminal_count` | Whitelist Terminal Count | 白名单终端数 |
+| `sensor.tplink_guard_static_ip_count` | Static IP Count | 静态分配终端数（属性含启用数与固件上限 80） |
+| `sensor.tplink_guard_watched_online_terminal_count` | Watched Online Terminal Count | 关注终端在线数 |
+| `sensor.tplink_guard_watched_offline_terminal_count` | Watched Offline Terminal Count | 关注终端离线数 |
+| `sensor.tplink_guard_watched_terminal_ip` | Watched Terminal IP | 关注终端在线 IP 列表 |
+| `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 有陌生终端在线时为 on |
+| `binary_sensor.tplink_guard_watched_terminal_online` | Watched Terminal Online | 有关注终端在线时为 on |
+
+> **升级说明**：上表是全新安装按 `suggested_object_id` 生成的 ID。从旧版本（中文名称）升级时，HA 实体注册表可能仍保留早期的拼音 ID，需在「设置 → 设备与服务 → 实体」中按上表改名，或先删除再重建，自动化里的 ID 也要同步替换。
+
+单台设备的在线 / 离线明细不单独生成实体，可在聚合实体的属性 `devices` 中查看具体 IP、MAC 与主机名。
+
+## 名单格式（无引号）
+
+白名单示例：
+
+```
+# 这是注释
+4C-C6-4C-EC-0C-3B # 网关
+20-BD-1D-D7-85-57 # 台式机
+```
+
+关注名单示例（备注用 `|` 分段）：
+
+```
+# 姓名|昵称|设备名
+AA-BB-CC-DD-EE-01 # 张三|三哥|Phone-A
+```
+
+不在白名单中的设备即使写入关注名单也不会生效。名单改完会自动重载，无需重启 HA。
+
+## 给自动化 / Node-RED 使用
+
+`sensor.tplink_guard_watched_terminal_ip` 的 `watchlist` 属性是一个数组，包含**完整的关注名单**（含离线设备）：
+
+```json
+[
+  { "mac": "AABBCCDDEE01", "ip": "", "name": "张三", "nickname": "三哥", "device": "Phone-A" }
+]
+```
+
+`binary_sensor.tplink_guard_watched_terminal_online` 与 `sensor.tplink_guard_watched_terminal_ip` 的 `devices` 属性则是**当前在线**的关注终端。
+
+因此自动化 / Node-RED 只需读取这两个实体属性即可判断「哪些关注的人在家」，**不需要在脚本里硬编码 MAC、姓名或昵称**，也不需要额外读取名单文件。增删家人时只改关注名单 TXT 一行即可。
+
+`examples/automations.yaml` 提供了陌生终端告警与关注终端上线提醒的示例。
+
+## 目录
+
+```
+custom_components/tplink_guard/   # HA 自定义集成源码（含 brand/ 本地 LOGO）
+examples/                         # 名单示例与自动化示例
+  tplink_guard_whitelist.example.txt
+  tplink_guard_watchlist.example.txt
+  automations.yaml
+LICENSE                           # MIT
+```
+
+真实名单文件（`tplink_guard_whitelist.txt` / `tplink_guard_watchlist.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
+
+## 免责声明
+
+本项目的路由器登录密码编码算法来自设备前端脚本，属于逆向实现，可能因固件版本不同而失效。使用风险自负。

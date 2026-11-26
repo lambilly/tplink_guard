@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to the router",
+        "description": "Enter router credentials and monitoring settings. The password is stored only in Home Assistant.",
+        "data": {
+          "host": "Host",
+          "port": "Management port",
+          "username": "Username",
+          "password": "Password",
+          "scan_interval": "Scan interval (seconds)",
+          "whitelist_path": "Whitelist file path",
+          "watchlist_path": "Watchlist file path",
+          "match_by": "Match by"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the router. Check host, port and network.",
+      "invalid_auth": "Invalid username or password.",
+      "unknown": "Unexpected error. Check the logs."
+    },
+    "abort": {
+      "already_configured": "This router is already configured."
+    }
+  },
+  "services": {
+    "reload_whitelist": {
+      "name": "Reload lists",
+      "description": "Re-read the configured whitelist and watchlist files and refresh all entities."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "TPLink Guard options",
+        "data": {
+          "scan_interval": "Scan interval (seconds)",
+          "whitelist_path": "Whitelist file path",
+          "watchlist_path": "Watchlist file path",
+          "match_by": "Match by"
+        }
+      }
+    }
+  }
+}

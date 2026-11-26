@@ -1,0 +1,10 @@
+# TPLink Guard 关注名单示例 —— 复制为 /config/tplink_guard_watchlist.txt 后按实际修改
+# 格式与白名单相同；只有同时存在于白名单中的 MAC 才算「关注终端」。
+# 备注格式：姓名|昵称|设备名
+#   姓名  —— 显示用真名
+#   昵称  —— 来访统计里的称呼（如 妈妈/阿公）
+#   设备名—— 可选，仅作说明
+# 这三段会被集成解析为实体属性 watchlist，供自动化 / Node-RED 直接读取，无需硬编码。
+
+AA-BB-CC-DD-EE-01 # 张三|三哥|Phone-A
+AA-BB-CC-DD-EE-02 # 李四|小李|Phone-B

@@ -1,0 +1,52 @@
+# 示例：陌生终端上线时通知，恢复后清除
+# 把这段追加到 HA 的 automations.yaml，或复制到自动化编辑器中。
+#
+# 注意：下面用的是全新安装时生成的英文实体 ID。若你的 HA 是旧版本升级、
+# 实体 ID 为拼音形式（可在「开发者工具 → 状态」查看），请按实际 ID 替换。
+
+- alias: 主路由发现陌生终端
+  description: 在线终端不在白名单时推送通知
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
+      from: "off"
+      to: "on"
+  action:
+    - service: persistent_notification.create
+      data:
+        notification_id: tplink_guard_unknown
+        title: 主路由发现陌生终端
+        message: >-
+          陌生终端 IP：{{ state_attr('sensor.tplink_guard_unknown_terminal_ip', 'devices')
+          | map(attribute='ip') | join(', ') }}
+
+- alias: 主路由陌生终端已离线
+  description: 陌生终端全部离线后清除通知
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
+      from: "on"
+      to: "off"
+  action:
+    - service: persistent_notification.dismiss
+      data:
+        notification_id: tplink_guard_unknown
+
+- alias: 主路由关注终端上线提醒
+  description: 白名单中标记为关注的终端上线时推送通知
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.tplink_guard_watched_terminal_online
+      from: "off"
+      to: "on"
+  action:
+    - service: persistent_notification.create
+      data:
+        notification_id: tplink_guard_watched_terminal_online
+        title: 关注终端已上线
+        message: >-
+          关注终端 IP：{{ state_attr('binary_sensor.tplink_guard_watched_terminal_online', 'devices')
+          | map(attribute='ip') | join(', ') }}

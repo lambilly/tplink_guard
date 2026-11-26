@@ -1,0 +1,13 @@
+{
+  "domain": "tplink_guard",
+  "name": "TPLink Guard",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/lambilly/tplink_guard",
+  "icon": "mdi:router-network",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}
