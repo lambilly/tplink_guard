@@ -77,18 +77,15 @@ async def async_setup_entry(
 
 
 def _pin_binary_identity(registry, entry: ConfigEntry, entity) -> None:
-    """Pin binary sensor ids/names in the registry.
+    """Pin binary sensor display names in the registry.
 
     Entities are attached to the TPLink Guard device (visible in the
     integration/device page). A pinned registry name keeps the entity_id
-    stable even with a device attached — HA 2026.11 only regenerates
-    auto-generated ids, not user-named ones (same mechanism as the
-    renamed device_trackers).
+    stable across restarts — HA 2026.11 only regenerates auto-generated
+    ids, not user-named ones (same mechanism as the device_trackers).
+    Entity ids use the natural prefixed form
+    binary_sensor.tplink_guard_<name> (as referenced by Node-RED).
     """
-    expected = {
-        "unknown_present": "binary_sensor.unknown_terminal_present",
-        "watched_online": "binary_sensor.phone_online",
-    }
     name = entity.entity_description.name
     entry_obj = registry.async_get_or_create(
         "binary_sensor",
@@ -97,18 +94,12 @@ def _pin_binary_identity(registry, entry: ConfigEntry, entity) -> None:
         config_entry=entry,
         original_name=name,
     )
-    updates: dict[str, str] = {}
-    wanted = expected.get(entity.entity_description.key)
-    if wanted and entry_obj.entity_id != wanted:
-        updates["new_entity_id"] = wanted
     if entry_obj.name != name:
-        updates["name"] = name
-    if updates:
         try:
-            registry.async_update_entity(entry_obj.entity_id, **updates)
+            registry.async_update_entity(entry_obj.entity_id, name=name)
         except Exception:  # noqa: BLE001 - e.g. id already taken
             _LOGGER.warning(
-                "Could not pin binary sensor identity for %s",
+                "Could not pin binary sensor name for %s",
                 entity.entity_description.key,
                 exc_info=True,
             )
