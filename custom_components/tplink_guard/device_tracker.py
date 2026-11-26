@@ -16,8 +16,15 @@ import re
 from typing import Any
 
 from homeassistant.components.device_tracker import SourceType
-from homeassistant.components.device_tracker.config_entry import DeviceTrackerEntity
+
+try:  # HA >= 2025.x: the entity class lives on the package root.
+    from homeassistant.components.device_tracker import TrackerEntity
+except ImportError:  # pragma: no cover - older HA releases
+    from homeassistant.components.device_tracker.config_entry import TrackerEntity
+
+DeviceTrackerEntity = TrackerEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_HOME, STATE_NOT_HOME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -115,6 +122,11 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
         )
 
     @property
+    def state(self) -> str | None:
+        """home/not_home; HA 2026.11 no longer derives this from is_connected."""
+        return STATE_HOME if self.is_connected else STATE_NOT_HOME
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
         device = next(
@@ -138,4 +150,9 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
         registry = async_get_entity_registry(self.hass)
         registry_entry = registry.async_get(self.entity_id)
         if registry_entry and registry_entry.name != self._friendly:
-            registry.async_update(self.entity_id, name=self._friendly)
+            # HA >= 2026.11 renamed EntityRegistry.async_update to
+            # async_update_entity.
+            if hasattr(registry, "async_update_entity"):
+                registry.async_update_entity(self.entity_id, name=self._friendly)
+            else:  # pragma: no cover - older HA releases
+                registry.async_update(self.entity_id, name=self._friendly)

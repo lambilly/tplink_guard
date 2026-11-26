@@ -211,6 +211,12 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         if key == "watched_ips":
             ips = [device["ip"] for device in data.get("phone_online", []) if device.get("ip")]
             return ", ".join(ips) if ips else "none"
+        # The coordinator data keys were renamed watched_* -> phone_*; the
+        # entity keys (and thus unique ids) stay stable for the registry.
+        if key == "watched_online_count":
+            return data.get("phone_online_count")
+        if key == "watched_offline_count":
+            return data.get("phone_offline_count")
         return data.get(key)
 
     @property
