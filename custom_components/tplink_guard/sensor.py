@@ -90,7 +90,7 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="monitored_online_count",
         name="Monitored Online Count",
-        icon="mdi:monitor-check",
+        icon="mdi:monitor-eye",
     ),
     SensorEntityDescription(
         key="monitored_offline_count",
