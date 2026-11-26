@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
@@ -32,6 +34,9 @@ OBJECT_IDS: dict[str, str] = {
     "watched_online_count": "watched_online_terminal_count",
     "watched_offline_count": "watched_offline_terminal_count",
     "watched_ips": "watched_terminal_ip",
+    # Guest visit sensor keeps the legacy Node-RED identifier:
+    # entity_id is sensor.guest_visit_count (no tplink_guard prefix).
+    "guest_visit": "guest_visit_count",
 }
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
@@ -74,7 +79,82 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         name="Watched Terminal IP",
         icon="mdi:eye",
     ),
+    SensorEntityDescription(
+        key="guest_visit",
+        name="来访客人",
+        icon="mdi:account-arrow-left-outline",
+    ),
 )
+
+# Attribute keys of the guest visit sensor, identical to the legacy
+# Node-RED flow output so dashboards keep working unchanged.
+GUEST_ATTRS = (
+    "guest_all_count",
+    "guest_all_list",
+    "guest_home_count",
+    "guest_home_list",
+    "guest_nick_list",
+    "guest_out_count",
+    "guest_out_list",
+    "guest_detail",
+    "update_time",
+)
+
+
+_GUEST_MAC_CLEAN = re.compile(r"[^0-9a-fA-F]")
+
+
+def _clean_mac(value: Any) -> str:
+    """Normalize a MAC to 12 uppercase hex digits (empty if invalid)."""
+    cleaned = _GUEST_MAC_CLEAN.sub("", str(value or "")).upper()
+    return cleaned if len(cleaned) == 12 else ""
+
+
+def guest_stats(data: dict[str, Any]) -> dict[str, Any]:
+    """Compute guest visit statistics from coordinator data.
+
+    Mirrors the legacy Node-RED flow: a watched terminal that is online
+    counts as being at home. Output fields keep the exact legacy names.
+    """
+    watchlist = data.get(ATTR_WATCHLIST) or []
+    online_macs = {
+        _clean_mac(device.get("mac"))
+        for device in data.get("watched_online") or []
+    }
+
+    all_list: list[str] = []
+    home_list: list[str] = []
+    out_list: list[str] = []
+    nick_list: list[str] = []
+    for entry in watchlist:
+        mac = _clean_mac(entry.get("mac"))
+        name = str(entry.get("name") or entry.get("nickname") or "").strip() or mac
+        nickname = str(entry.get("nickname") or entry.get("name") or "").strip() or name
+        all_list.append(name)
+        if mac and mac in online_macs:
+            home_list.append(name)
+            nick_list.append(nickname)
+        else:
+            out_list.append(name)
+
+    home_count = len(home_list)
+    return {
+        "guest_all_count": len(all_list),
+        "guest_all_list": "｜".join(all_list) or "客人",
+        "guest_home_count": home_count,
+        "guest_home_list": "｜".join(home_list) or "客人",
+        "guest_nick_list": "｜".join(nick_list) or "客人",
+        "guest_out_count": len(out_list),
+        "guest_out_list": "｜".join(out_list) or "客人",
+        "guest_detail": f"{home_count}个客人来访。" if home_count else "",
+        "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
+    }
+
+
+def _format_time(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    return str(value) if value else ""
 
 
 async def async_setup_entry(
@@ -111,11 +191,20 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             name="TPLink Guard",
             manufacturer="TP-Link",
         )
+        if description.key == "guest_visit":
+            # Keep the legacy Node-RED identity: entity_id sensor.guest_visit_count
+            # with friendly name 来访客人 (no device prefix).
+            self._attr_suggested_object_id = OBJECT_IDS[description.key]
+            self._attr_has_entity_name = False
+            self._attr_name = description.name
+            self._attr_native_unit_of_measurement = "人"
 
     @property
     def native_value(self) -> Any:
         data = self.coordinator.data or {}
         key = self.entity_description.key
+        if key == "guest_visit":
+            return guest_stats(data)["guest_home_count"]
         if key == "unknown_ips":
             ips = [device["ip"] for device in data.get("unknown_devices", []) if device.get("ip")]
             return ", ".join(ips) if ips else "none"
@@ -127,6 +216,8 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
+        if self.entity_description.key == "guest_visit":
+            return guest_stats(data)
         if self.entity_description.key == "unknown_ips":
             return {
                 ATTR_DEVICES: data.get("unknown_devices", []),

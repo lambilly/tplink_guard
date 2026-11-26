@@ -13,9 +13,9 @@
 - 使用路由器原生 SLP JSON 接口（`stok` 登录 + `/ds` 数据接口），账号 / 密码 / 端口可配置
 - 刷新周期可配置（默认 60 秒，最小 5 秒）
 - 读取 `host_management/host_info` 在线终端表；另读取 `dhcpd/dhcp_static` 统计静态分配数
-- **白名单 TXT**：每行一个 MAC，可用 `#` 加备注，不使用引号
-- **关注名单 TXT**：格式相同，但只有同时存在于白名单中的设备才算关注终端
-- 备注支持 `姓名|昵称|设备名`，解析后随实体属性 `watchlist` 输出
+- **白名单 TXT**：每行格式 `MAC # 字段1,字段2,...`（逗号区隔，IP 不加括号），不使用引号
+- **关注名单 TXT**：每行格式与白名单相同，但只有同时存在于白名单中的设备才算关注终端
+- 关注名单备注字段为 `姓名,昵称,设备名`，解析后随实体属性 `watchlist` 输出
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -56,28 +56,35 @@
 | `sensor.tplink_guard_watched_online_terminal_count` | Watched Online Terminal Count | 关注终端在线数 |
 | `sensor.tplink_guard_watched_offline_terminal_count` | Watched Offline Terminal Count | 关注终端离线数 |
 | `sensor.tplink_guard_watched_terminal_ip` | Watched Terminal IP | 关注终端在线 IP 列表 |
-| `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 有陌生终端在线时为 on |
-| `binary_sensor.tplink_guard_watched_terminal_online` | Watched Terminal Online | 有关注终端在线时为 on |
+| `sensor.guest_visit_count` | 来访客人 | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
+| `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
+| `binary_sensor.tplink_guard_watched_terminal_online` | Watched Terminal Online | 在线 / 离线 |
 
 > **升级说明**：上表是全新安装按 `suggested_object_id` 生成的 ID。从旧版本（中文名称）升级时，HA 实体注册表可能仍保留早期的拼音 ID，需在「设置 → 设备与服务 → 实体」中按上表改名，或先删除再重建，自动化里的 ID 也要同步替换。
 
+`sensor.guest_visit_count` 与旧版 Node-RED「来访客人」流完全同标识（entity_id、friendly_name、state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time`），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。
+
+两个 binary_sensor 的状态文字通过实体翻译显示为「发现陌生终端 / 无陌生终端」与「在线 / 离线」，避免默认「开启 / 关闭」的歧义。
+
 单台设备的在线 / 离线明细不单独生成实体，可在聚合实体的属性 `devices` 中查看具体 IP、MAC 与主机名。
 
-## 名单格式（无引号）
+## 名单格式（无引号，逗号区隔）
 
-白名单示例：
+两个名单每行格式统一为 `MAC # 字段1,字段2,...`，字段用逗号区隔，IP 不加括号。
+
+白名单示例（字段：名称,IP，IP 可选）：
 
 ```
 # 这是注释
-4C-C6-4C-EC-0C-3B # 网关
-20-BD-1D-D7-85-57 # 台式机
+4C-C6-4C-EC-0C-3B # 网关,192.168.1.6
+20-BD-1D-D7-85-57 # 台式机,192.168.1.10
+AA-BB-CC-DD-EE-01 # 只写名称也可以
 ```
 
-关注名单示例（备注用 `|` 分段）：
+关注名单示例（字段：姓名,昵称,设备名）：
 
 ```
-# 姓名|昵称|设备名
-AA-BB-CC-DD-EE-01 # 张三|三哥|Phone-A
+AA-BB-CC-DD-EE-01 # 张三,三哥,Phone-A
 ```
 
 不在白名单中的设备即使写入关注名单也不会生效。名单改完会自动重载，无需重启 HA。

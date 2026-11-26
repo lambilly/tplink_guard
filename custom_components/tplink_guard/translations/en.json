@@ -43,5 +43,21 @@
         }
       }
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "unknown_present": {
+        "state": {
+          "on": "Unknown terminal present",
+          "off": "No unknown terminal"
+        }
+      },
+      "watched_online": {
+        "state": {
+          "on": "Online",
+          "off": "Offline"
+        }
+      }
+    }
   }
 }

@@ -49,7 +49,7 @@ class Whitelist:
         entry = self.entries.get(normalize_mac(mac))
         if not entry:
             return None
-        return entry.get("note") or entry.get("hostname") or None
+        return entry.get("hostname") or entry.get("note") or None
 
 
 def _read_csv(path: Path) -> Whitelist:
@@ -97,6 +97,26 @@ def _read_csv(path: Path) -> Whitelist:
     return result
 
 
+_IPV4 = re.compile(r"\d{1,3}(?:\.\d{1,3}){3}")
+
+
+def _parse_whitelist_note(comment: str) -> tuple[str, str]:
+    """Parse a whitelist note into ``(name, ip)``.
+
+    Unified format uses comma-separated fields: ``名称,IP``. The legacy
+    ``名称 (IP)`` form is still accepted. The IP is extracted wherever it
+    appears so IP-based matching keeps working.
+    """
+    text = (comment or "").strip()
+    if not text:
+        return "", ""
+    ip_match = _IPV4.search(text)
+    ip = ip_match.group(0) if ip_match else ""
+    name = text.split(",")[0].strip()
+    name = name.split("(")[0].strip()
+    return name, ip
+
+
 def _read_plain(path: Path) -> Whitelist:
     result = Whitelist()
     for line in path.read_text(encoding="utf-8-sig").splitlines():
@@ -109,17 +129,21 @@ def _read_plain(path: Path) -> Whitelist:
             comment = ""
         if not value:
             continue
-        note = comment.split("(")[0].strip() if comment else ""
         if re.fullmatch(r"[0-9a-fA-F:-]{12,17}", value):
             mac = normalize_mac(value)
             if len(mac) == 12:
+                name, ip = _parse_whitelist_note(comment)
+                if ip:
+                    result.ips.add(ip)
                 result.macs.add(mac)
                 result.entries[mac] = {
                     "mac": mac,
-                    "ip": "",
-                    "hostname": note,
+                    "ip": ip,
+                    "hostname": name,
                     "vendor": "",
-                    "note": note,
+                    # Keep the full comma-separated note so watchlist
+                    # entries can be split into name/nickname/device.
+                    "note": comment,
                 }
         elif re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", value):
             result.ips.add(value)
@@ -129,14 +153,21 @@ def _read_plain(path: Path) -> Whitelist:
 def split_watch_note(note: str | None) -> tuple[str, str, str]:
     """Split a watchlist note into ``(name, nickname, device)``.
 
-    Preferred format is ``姓名|昵称|设备名``. The legacy ``姓名 设备名``
-    form is also accepted, with the nickname falling back to the name.
+    Unified format uses comma-separated fields: ``姓名,昵称,设备名``. The
+    legacy ``姓名|昵称|设备名`` and ``姓名 设备名`` forms are also accepted,
+    with the nickname falling back to the name.
     """
     value = (note or "").strip()
     if not value:
         return "", "", ""
-    if "|" in value:
-        parts = [part.strip() for part in value.split("|")]
+    if "," in value:
+        separator = ","
+    elif "|" in value:
+        separator = "|"
+    else:
+        separator = None
+    if separator:
+        parts = [part.strip() for part in value.split(separator)]
         parts += ["", "", ""]
         name = parts[0]
         nickname = parts[1] or name

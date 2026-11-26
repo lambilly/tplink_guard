@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
@@ -40,7 +39,7 @@ DESCRIPTIONS: tuple[TPLinkGuardBinaryDescription, ...] = (
         key="unknown_present",
         name="Unknown Terminal Present",
         icon="mdi:shield-alert",
-        device_class=BinarySensorDeviceClass.PROBLEM,
+        translation_key="unknown_present",
         count_key="unknown_count",
         devices_key="unknown_devices",
     ),
@@ -48,6 +47,7 @@ DESCRIPTIONS: tuple[TPLinkGuardBinaryDescription, ...] = (
         key="watched_online",
         name="Watched Terminal Online",
         icon="mdi:bell-outline",
+        translation_key="watched_online",
         count_key="watched_online_count",
         devices_key="watched_online",
     ),
