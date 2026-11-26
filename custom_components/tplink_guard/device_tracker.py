@@ -4,12 +4,11 @@ Each line of the monitored list file (``lists/monitored.txt`` inside the
 integration folder) defines one terminal that gets its own device_tracker
 entity showing whether it is online (home) or offline (not_home).
 
-Line format: ``MAC, entity_name, 备注``. The second field becomes the
-entity name (HA 2026.11 then generates the id naturally as
-``device_tracker.tplink_guard_<entity_name>``). The third field is a
-plain-text note for documentation only and is never sent to HA.
-The entity name is optional; when missing it is derived from the router
-hostname (falling back to the MAC).
+Line format: ``MAC, entity_name, display_name``. The second field builds
+the entity id (``device_tracker.tplink_guard_<entity_name>``); the third
+field is the friendly/display name (Chinese allowed). If the display name
+is missing the entity name is shown; if the entity name is missing it is
+derived from the router hostname (falling back to the MAC).
 """
 
 from __future__ import annotations
@@ -58,12 +57,45 @@ async def async_setup_entry(
 ) -> None:
     """Set up device trackers for monitored terminals."""
     coordinator: TPLinkGuardCoordinator = hass.data[DOMAIN][entry.entry_id]
+    registry = async_get_entity_registry(hass)
     entities: list[MonitoredTerminalTracker] = []
     for item in coordinator.monitored:
-        entities.append(
-            MonitoredTerminalTracker(coordinator, entry.entry_id, item)
-        )
+        entity = MonitoredTerminalTracker(coordinator, entry.entry_id, item)
+        _pin_tracker_identity(registry, entry, entity)
+        entities.append(entity)
     async_add_entities(entities)
+
+
+def _pin_tracker_identity(registry, entry: ConfigEntry, entity) -> None:
+    """Pin tracker entity ids and display names in the registry.
+
+    HA 2026.11 ignores suggested_object_id and derives ids from
+    "<device name> <entity name>"; a pure name change also regenerates the
+    id. Pinning both the id and the display name explicitly (the same
+    mechanism as the guest sensor) keeps them independent and stable:
+    the id comes from the second TXT field, the display name from the
+    third (Chinese allowed).
+    """
+    wanted = f"device_tracker.tplink_guard_{entity._attr_name}"
+    entry_obj = registry.async_get_or_create(
+        "device_tracker",
+        DOMAIN,
+        entity.unique_id,
+        config_entry=entry,
+        original_name=entity._friendly,
+    )
+    updates: dict[str, str] = {}
+    if entry_obj.entity_id != wanted:
+        updates["new_entity_id"] = wanted
+    if entry_obj.name != entity._friendly:
+        updates["name"] = entity._friendly
+    if updates:
+        try:
+            registry.async_update_entity(entry_obj.entity_id, **updates)
+        except Exception:  # noqa: BLE001 - e.g. id already taken
+            _LOGGER.warning(
+                "Could not pin tracker identity to %s", wanted, exc_info=True
+            )
 
 
 class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
@@ -81,17 +113,17 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
         super().__init__(coordinator)
         self._mac = normalize_mac(item.get("mac"))
         custom_id = str(item.get("entity_id") or "").strip()
+        display_name = str(item.get("name") or "").strip()
 
-        # Entity NAME comes from the second TXT field; HA 2026.11 then
-        # generates the entity id naturally as
-        # device_tracker.tplink_guard_<name>. The third field is a comment
-        # only and never reaches HA.
+        # Second TXT field -> entity id (device_tracker.tplink_guard_<name>);
+        # third TXT field -> friendly/display name, Chinese allowed.
         if custom_id:
             id_part = custom_id.split(".")[-1].strip()
         else:
             hostname = self._lookup_hostname()
             id_part = _slugify(hostname) if hostname else f"terminal_{self._mac[-6:].lower()}"
         self._attr_name = id_part or f"terminal_{self._mac[-6:].lower()}"
+        self._friendly = display_name or self._attr_name
         self._attr_suggested_object_id = self._attr_name
 
         self._attr_unique_id = f"{entry_id}_monitored_{self._mac}"
@@ -154,19 +186,3 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
             "hostname": device.get("hostname", "") if device else "",
             ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
         }
-
-    async def async_added_to_hass(self) -> None:
-        """Sync the registry name with the second TXT field.
-
-        Older list versions stored a Chinese name; writing the new name
-        makes HA 2026.11 regenerate the entity id naturally as
-        device_tracker.tplink_guard_<name>.
-        """
-        await super().async_added_to_hass()
-        registry = async_get_entity_registry(self.hass)
-        registry_entry = registry.async_get(self.entity_id)
-        if registry_entry and registry_entry.name != self._attr_name:
-            if hasattr(registry, "async_update_entity"):
-                registry.async_update_entity(self.entity_id, name=self._attr_name)
-            else:  # pragma: no cover - older HA releases
-                registry.async_update(self.entity_id, name=self._attr_name)

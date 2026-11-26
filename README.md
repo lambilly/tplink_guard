@@ -16,7 +16,7 @@
 - **白名单 TXT**：每行格式 `MAC # 字段1,字段2,...`（逗号区隔，IP 不加括号），不使用引号
 - **手机名单 TXT**（`lists/phone.txt`，原关注名单）：每行格式与白名单相同，但只有同时存在于白名单中的设备才算关注终端
 - 手机名单备注字段为 `姓名,昵称,设备名`，解析后随实体属性 `watchlist` 输出
-- **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体名称,备注`，第二字段作为实体名称（ID 自动生成为 `device_tracker.tplink_guard_<名称>`），第三列备注仅文档用途不进 HA
+- **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体名,显示名`，第二字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`），第三字段为中文显示名（可省略）
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -96,7 +96,7 @@ AA-BB-CC-DD-EE-01 # 张三,三哥,Phone-A
 
 不在白名单中的设备即使写入手机名单也不会生效。名单改完会自动重载，无需重启 HA。
 
-监控终端名单示例（字段：MAC,实体名称,备注，备注仅文档用途）：
+监控终端名单示例（字段：MAC,实体名,显示名）：
 
 ```
 20-BD-1D-D7-85-57, hui_pu_dian_nao, 惠普电脑
@@ -104,9 +104,9 @@ AA-BB-CC-DD-EE-01, dev_a, 设备A
 AA-BB-CC-DD-EE-02
 ```
 
-- 第二字段作为**实体名称**，HA 自动生成实体 ID：`hui_pu_dian_nao` → `device_tracker.tplink_guard_hui_pu_dian_nao`；可带或不带 `device_tracker.` 前缀填写
-- 集成会把该名称写入实体注册表，HA 2026.11 依此自然生成 ID，重启后保持稳定
-- 省略 `实体名称` 时按路由器主机名自动生成；第三列 `备注` 仅作 TXT 文档用途，不会写入 HA
+- 第二字段生成**实体 ID**：`hui_pu_dian_nao` → `device_tracker.tplink_guard_hui_pu_dian_nao`；可带或不带 `device_tracker.` 前缀填写
+- 第三字段是**前端显示名**（可用中文），与实体 ID 相互独立——集成会同时钉住 ID 与显示名，HA 2026.11 不会重生成
+- 省略 `显示名` 时显示实体名；省略 `实体名` 时按路由器主机名自动生成
 - 名单内每台终端生成一个 `device_tracker` 实体：在线为 `home`，离线为 `not_home`，状态未变化时持续时间计时不会重置，属性含 `mac / ip / hostname / last_update`
 
 ## 给自动化 / Node-RED 使用
