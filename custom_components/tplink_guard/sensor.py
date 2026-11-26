@@ -252,12 +252,13 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             manufacturer="TP-Link",
         )
         if description.key == "guest_visit":
-            # Keep the legacy Node-RED identity: entity_id sensor.guest_visit_count
-            # with friendly name 来访客人 (no device prefix).
-            # HA 2026.11 ignores suggested_object_id and builds the id as
-            # "<device name> <entity name>", so this entity must have NO
-            # device association to avoid the tplink_guard_ prefix.
-            self._attr_device_info = None
+            # Keep the legacy Node-RED identity: friendly name "Guest Visit
+            # Count" with no device prefix in the display name, while the
+            # entity IS attached to the TPLink Guard device (visible in the
+            # integration/device page). The entity_id is pinned to
+            # sensor.guest_visit_count by _pin_guest_identity; a pinned
+            # registry name keeps the id stable even with a device attached
+            # (same mechanism as the renamed device_trackers).
             self._attr_has_entity_name = False
             self._attr_name = description.name
             self._attr_native_unit_of_measurement = "人"

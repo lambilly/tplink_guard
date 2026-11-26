@@ -11,11 +11,19 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_registry import (
+    async_get as async_get_entity_registry,
+)
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import ATTR_DEVICES, ATTR_LAST_UPDATE, DOMAIN
 from .coordinator import TPLinkGuardCoordinator
+
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 # English object ids -> entity_id is <platform>.tplink_guard_<object_id>
@@ -59,10 +67,51 @@ async def async_setup_entry(
 ) -> None:
     """Set up binary sensors from a config entry."""
     coordinator: TPLinkGuardCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        TPLinkGuardBinarySensor(coordinator, entry.entry_id, description)
-        for description in DESCRIPTIONS
+    registry = async_get_entity_registry(hass)
+    entities = []
+    for description in DESCRIPTIONS:
+        entity = TPLinkGuardBinarySensor(coordinator, entry.entry_id, description)
+        _pin_binary_identity(registry, entry, entity)
+        entities.append(entity)
+    async_add_entities(entities)
+
+
+def _pin_binary_identity(registry, entry: ConfigEntry, entity) -> None:
+    """Pin binary sensor ids/names in the registry.
+
+    Entities are attached to the TPLink Guard device (visible in the
+    integration/device page). A pinned registry name keeps the entity_id
+    stable even with a device attached — HA 2026.11 only regenerates
+    auto-generated ids, not user-named ones (same mechanism as the
+    renamed device_trackers).
+    """
+    expected = {
+        "unknown_present": "binary_sensor.unknown_terminal_present",
+        "watched_online": "binary_sensor.phone_online",
+    }
+    name = entity.entity_description.name
+    entry_obj = registry.async_get_or_create(
+        "binary_sensor",
+        DOMAIN,
+        entity.unique_id,
+        config_entry=entry,
+        original_name=name,
     )
+    updates: dict[str, str] = {}
+    wanted = expected.get(entity.entity_description.key)
+    if wanted and entry_obj.entity_id != wanted:
+        updates["new_entity_id"] = wanted
+    if entry_obj.name != name:
+        updates["name"] = name
+    if updates:
+        try:
+            registry.async_update_entity(entry_obj.entity_id, **updates)
+        except Exception:  # noqa: BLE001 - e.g. id already taken
+            _LOGGER.warning(
+                "Could not pin binary sensor identity for %s",
+                entity.entity_description.key,
+                exc_info=True,
+            )
 
 
 class TPLinkGuardBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -80,11 +129,14 @@ class TPLinkGuardBinarySensor(CoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
-        # Diagnostic entities stay standalone (no device association):
-        # HA 2026.11 builds the entity id as "<device name> <entity name>",
-        # so a device would force the tplink_guard_ prefix. Without a
-        # device the id is derived from the entity name alone.
-        self._attr_device_info = None
+        # Attached to the integration device so the entities show up under
+        # the TPLink Guard device page; ids stay pinned via
+        # _pin_binary_identity.
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry_id)},
+            name="TPLink Guard",
+            manufacturer="TP-Link",
+        )
 
     @property
     def is_on(self) -> bool:
