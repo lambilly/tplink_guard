@@ -63,11 +63,11 @@
 | `sensor.tplink_guard_monitored_online_count` | Monitored Online Count | 监控终端名单在线数 |
 | `sensor.tplink_guard_monitored_offline_count` | Monitored Offline Count | 监控终端名单离线数 |
 | `sensor.tplink_guard_monitored_terminal_count` | Monitored Terminal Count | 监控终端名单总台数 |
-| `binary_sensor.unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
-| `binary_sensor.phone_online` | Phone Online | 在线 / 离线 |
+| `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
+| `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
 | `device_tracker.<自定义ID>` | <自定义中文名> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
 
-> **升级说明**：统计类传感器的实体 ID 带 `tplink_guard_` 前缀（它们挂在「TPLink Guard」设备下，HA 2026.11 会用「设备名 + 实体名」生成 ID）；`guest_visit_count`、两个 binary_sensor 与 device_tracker **不挂设备**，ID 不带前缀。已注册的实体 ID 不会随版本自动改变——旧安装需在「设置 → 设备与服务 → 实体」中改名，或删除集成后重新添加，自动化里的 ID 也要同步替换。
+> **升级说明**：HA 2026.11 强制按「集成名前缀 + 实体名」生成全新安装的实体 ID（`_attr_suggested_object_id` 被忽略），因此新安装的实体默认带 `tplink_guard_` 前缀。例外：`sensor.guest_visit_count` 由集成在注册表固定（兼容旧 Node-RED 流）。已注册的实体 ID 不会随版本自动改变；需要自定义 ID（如 `device_tracker.hp_imac`）可在「设置 → 设备与服务 → 实体」中改名，集成不会覆盖手动改名。
 
 `sensor.guest_visit_count` 与旧版 Node-RED「来访客人」流同标识（state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` 完全一致），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。注意：全新安装时该实体 ID 会按名称生成为 `sensor.guest_visit_count`，如需与旧流一致的 `sensor.guest_visit_count`，可在实体注册表中手动改名。
 
@@ -118,7 +118,7 @@ AA-BB-CC-DD-EE-02
 ]
 ```
 
-`binary_sensor.phone_online` 与 `sensor.tplink_guard_phone_online_ip` 的 `devices` 属性则是**当前在线**的关注终端。
+`binary_sensor.tplink_guard_phone_online` 与 `sensor.tplink_guard_phone_online_ip` 的 `devices` 属性则是**当前在线**的关注终端。
 
 因此自动化 / Node-RED 只需读取这两个实体属性即可判断「哪些关注的人在家」，**不需要在脚本里硬编码 MAC、姓名或昵称**，也不需要额外读取名单文件。增删家人时只改手机名单 TXT 一行即可。
 

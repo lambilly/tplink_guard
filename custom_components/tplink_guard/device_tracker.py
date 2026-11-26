@@ -26,6 +26,7 @@ DeviceTrackerEntity = TrackerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_HOME, STATE_NOT_HOME
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity_registry import (
     async_get as async_get_entity_registry,
@@ -98,11 +99,11 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
         self._friendly = custom_name or hostname or self._mac
 
         self._attr_unique_id = f"{entry_id}_monitored_{self._mac}"
-        # Diagnostic entities stay standalone (no device association):
-        # HA 2026.11 ignores suggested_object_id and builds the entity id
-        # as "<device name> <entity name>", so a device association would
-        # force the tplink_guard_ prefix. Without a device the custom id
-        # from the TXT is used as-is.
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry_id)},
+            name="TPLink Guard",
+            manufacturer="TP-Link",
+        )
         self._attr_icon = "mdi:monitor"
         self._attr_source_type = SourceType.ROUTER
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime
 from typing import Any
@@ -11,6 +12,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_registry import (
+    async_get as async_get_entity_registry,
+)
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -21,6 +25,8 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import TPLinkGuardCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 # English object ids -> entity_id is <platform>.tplink_guard_<object_id>
@@ -182,10 +188,44 @@ async def async_setup_entry(
 ) -> None:
     """Set up sensors from a config entry."""
     coordinator: TPLinkGuardCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        TPLinkGuardSensor(coordinator, entry.entry_id, description)
-        for description in SENSOR_DESCRIPTIONS
+    registry = async_get_entity_registry(hass)
+    entities = []
+    for description in SENSOR_DESCRIPTIONS:
+        entity = TPLinkGuardSensor(coordinator, entry.entry_id, description)
+        if description.key == "guest_visit":
+            _pin_guest_identity(registry, entry, entity)
+        entities.append(entity)
+    async_add_entities(entities)
+
+
+def _pin_guest_identity(registry, entry: ConfigEntry, entity) -> None:
+    """Pin the legacy guest sensor identity in the registry.
+
+    The Node-RED guest flow requires entity_id sensor.guest_visit_count.
+    HA 2026.11 derives ids from "<integration title> <name>" and ignores
+    suggested_object_id, so pin id and name before the entity registers —
+    equivalent to a manual registry rename, which stays stable.
+    """
+    entry_obj = registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        entity.unique_id,
+        config_entry=entry,
+        original_name=entity._attr_name,
     )
+    updates: dict[str, str] = {}
+    if entry_obj.entity_id != "sensor.guest_visit_count":
+        updates["new_entity_id"] = "sensor.guest_visit_count"
+    if entry_obj.name != "Guest Visit Count":
+        updates["name"] = "Guest Visit Count"
+    if updates:
+        try:
+            registry.async_update_entity(entry_obj.entity_id, **updates)
+        except Exception:  # noqa: BLE001 - e.g. id already taken
+            _LOGGER.warning(
+                "Could not pin guest sensor to sensor.guest_visit_count",
+                exc_info=True,
+            )
 
 
 class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):

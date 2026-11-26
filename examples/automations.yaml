@@ -9,7 +9,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: binary_sensor.unknown_terminal_present
+      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
       from: "off"
       to: "on"
   action:
@@ -26,7 +26,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: binary_sensor.unknown_terminal_present
+      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
       from: "on"
       to: "off"
   action:
@@ -39,7 +39,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: binary_sensor.phone_online
+      entity_id: binary_sensor.tplink_guard_phone_online
       from: "off"
       to: "on"
   action:
@@ -48,5 +48,5 @@
         notification_id: tplink_guard_phone_online
         title: 手机终端已上线
         message: >-
-          手机终端 IP：{{ state_attr('binary_sensor.phone_online', 'devices')
+          手机终端 IP：{{ state_attr('binary_sensor.tplink_guard_phone_online', 'devices')
           | map(attribute='ip') | join(', ') }}
