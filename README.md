@@ -14,9 +14,9 @@
 - 刷新周期可配置（默认 60 秒，最小 5 秒）
 - 读取 `host_management/host_info` 在线终端表；另读取 `dhcpd/dhcp_static` 统计静态分配数
 - **白名单 TXT**：每行格式 `MAC # 字段1,字段2,...`（逗号区隔，IP 不加括号），不使用引号
-- **手机名单 TXT**（`tplink_guard_phone.txt`，原关注名单）：每行格式与白名单相同，但只有同时存在于白名单中的设备才算关注终端
+- **手机名单 TXT**（`lists/phone.txt`，原关注名单）：每行格式与白名单相同，但只有同时存在于白名单中的设备才算关注终端
 - 手机名单备注字段为 `姓名,昵称,设备名`，解析后随实体属性 `watchlist` 输出
-- **监控终端名单 TXT**（`tplink_guard_monitored.txt`）：每行 `MAC,实体ID,中文名称`，名单内每台终端自动生成一个 device_tracker 实体（在线 / 离线）
+- **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体ID,中文名称`，名单内每台终端自动生成一个 device_tracker 实体（在线 / 离线）
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -30,15 +30,15 @@
 
 1. 把 `custom_components/tplink_guard/` 整个目录复制到 HA 配置目录下的 `custom_components/`。
 2. 把 `examples/` 下的示例文件复制到 **`custom_components/tplink_guard/lists/`**（随集成目录一起），并改名为：
-   - `tplink_guard_whitelist.txt`（白名单）
-   - `tplink_guard_phone.txt`（手机名单）
-   - `tplink_guard_monitored.txt`（监控终端名单，不需要逐台实体可留空）
+   - `whitelist.txt`（白名单）
+   - `phone.txt`（手机名单）
+   - `monitored.txt`（监控终端名单，不需要逐台实体可留空）
    然后按你自己的终端填写。
 3. 重启 Home Assistant。
 4. 在 HA 中进入「设置 → 设备与服务 → 添加集成」，搜索 `TPLink Guard`，按提示填写：
    - 主机地址、管理端口、用户名、密码
    - 刷新周期（秒）
-   - 白名单 / 手机名单 / 监控终端名单文件路径（默认 `custom_components/tplink_guard/lists/` 下的三个文件）
+   - 白名单 / 手机名单 / 监控终端名单文件路径（默认 `custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt`）
    - 匹配方式（建议 `both`）
 
 > 密码只保存在 HA 的 `.storage/core.config_entries` 中，不会写入本项目的日志或文件。
@@ -136,7 +136,7 @@ examples/                         # 名单示例与自动化示例
 LICENSE                           # MIT
 ```
 
-真实名单文件（`custom_components/tplink_guard/lists/` 下的 `tplink_guard_whitelist.txt` / `tplink_guard_phone.txt` / `tplink_guard_monitored.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
+真实名单文件（`custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
 
 ## 免责声明
 

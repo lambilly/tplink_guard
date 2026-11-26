@@ -3,6 +3,10 @@ tplink_guard_whitelist.txt
 tplink_guard_watchlist.txt
 tplink_guard_phone.txt
 tplink_guard_monitored.txt
+whitelist.txt
+phone.txt
+monitored.txt
+custom_components/tplink_guard/lists/*.txt
 *.bak
 *.bak-*
 dhcp_client_list.txt

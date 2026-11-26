@@ -1,8 +1,8 @@
 """Device tracker entities for monitored terminals.
 
-Each line of the monitored list file (``tplink_guard_monitored.txt``)
-defines one terminal that gets its own device_tracker entity showing
-whether it is online (home) or offline (not_home).
+Each line of the monitored list file (``lists/monitored.txt`` inside the
+integration folder) defines one terminal that gets its own device_tracker
+entity showing whether it is online (home) or offline (not_home).
 
 Line format: ``MAC, entity_id, 中文名称``. Both the entity id and the
 Chinese name are optional; missing values are derived from the router

@@ -1,4 +1,4 @@
-# TPLink Guard 监控终端名单示例 —— 复制为 /config/tplink_guard_monitored.txt 后按实际修改
+# TPLink Guard 监控终端名单示例 —— 复制为 custom_components/tplink_guard/lists/monitored.txt 后按实际修改
 # 名单内每台终端自动生成一个 device_tracker 实体（在线为 home，离线为 not_home）
 # 每行格式：MAC,实体ID,中文名称（后两列可省略，省略时按路由器主机名自动生成）
 # 实体ID 建议用英文（HA 按实体名生成 entity_id，中文名会转成拼音）；

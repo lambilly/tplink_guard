@@ -16,9 +16,9 @@ DEFAULT_HOST = "192.168.1.1"
 DEFAULT_PORT = 80
 DEFAULT_USERNAME = "admin"
 DEFAULT_SCAN_INTERVAL = 60
-DEFAULT_WHITELIST_FILENAME = "tplink_guard_whitelist.txt"
-DEFAULT_PHONE_FILENAME = "tplink_guard_phone.txt"
-DEFAULT_MONITORED_FILENAME = "tplink_guard_monitored.txt"
+DEFAULT_WHITELIST_FILENAME = "whitelist.txt"
+DEFAULT_PHONE_FILENAME = "phone.txt"
+DEFAULT_MONITORED_FILENAME = "monitored.txt"
 # List files live in a subfolder of the integration directory so /config
 # stays clean: /config/custom_components/tplink_guard/lists/
 DEFAULT_LISTS_RELDIR = "custom_components/tplink_guard/lists"

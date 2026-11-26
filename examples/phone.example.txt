@@ -1,5 +1,5 @@
-# TPLink Guard 手机名单示例 —— 复制为 /config/tplink_guard_phone.txt 后按实际修改
-# （原关注名单 tplink_guard_watchlist.txt 已改名为 tplink_guard_phone.txt）
+# TPLink Guard 手机名单示例 —— 复制为 custom_components/tplink_guard/lists/phone.txt 后按实际修改
+# （原关注名单 tplink_guard_watchlist.txt 已改名为 phone.txt）
 # 每行格式与白名单相同：MAC # 字段1,字段2,字段3（字段用逗号区隔）
 # 只有同时存在于白名单中的 MAC 才算「关注终端」（手机名单）。
 # 备注字段：姓名,昵称,设备名

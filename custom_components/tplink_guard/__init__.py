@@ -65,27 +65,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     options = entry.options
 
+    # Historic file names mapped to their current location in
+    # custom_components/tplink_guard/lists/.
+    _LEGACY_NAMES = {
+        "tplink_guard_whitelist.txt": DEFAULT_WHITELIST_FILENAME,
+        "tplink_guard_phone.txt": DEFAULT_PHONE_FILENAME,
+        "tplink_guard_monitored.txt": DEFAULT_MONITORED_FILENAME,
+        "tplink_guard_watchlist.txt": DEFAULT_PHONE_FILENAME,
+    }
+
     def _config_path(value: str | None) -> str | None:
         if not value:
             return value
-        # Migration: the phone list was formerly named
-        # tplink_guard_watchlist.txt. Redirect old paths transparently.
-        if value.endswith("tplink_guard_watchlist.txt"):
-            value = value[: -len("tplink_guard_watchlist.txt")] + "tplink_guard_phone.txt"
-            _LOGGER.debug("Redirected watchlist path to phone list: %s", value)
-        # Migration: list files moved from /config into the integration
-        # subfolder custom_components/tplink_guard/lists/.
-        lists_dir = hass.config.path(DEFAULT_LISTS_RELDIR)
-        for filename in (
-            DEFAULT_WHITELIST_FILENAME,
-            DEFAULT_PHONE_FILENAME,
-            DEFAULT_MONITORED_FILENAME,
-        ):
-            old_path = hass.config.path(filename)
-            if value == old_path:
-                value = os.path.join(lists_dir, filename)
-                _LOGGER.debug("Redirected list path into %s: %s", DEFAULT_LISTS_RELDIR, value)
-                break
+        # Migration: legacy names and locations resolve to the current
+        # <integration>/lists/<short-name> path transparently.
+        basename = os.path.basename(value)
+        mapped = _LEGACY_NAMES.get(basename) or (
+            basename
+            if basename
+            in (DEFAULT_WHITELIST_FILENAME, DEFAULT_PHONE_FILENAME, DEFAULT_MONITORED_FILENAME)
+            else None
+        )
+        if mapped:
+            new_path = os.path.join(hass.config.path(DEFAULT_LISTS_RELDIR), mapped)
+            if value != new_path:
+                _LOGGER.debug("Redirected list path: %s -> %s", value, new_path)
+                value = new_path
         return value
 
     phone_path = _config_path(
@@ -94,9 +99,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = TPLinkGuardCoordinator(
         hass,
         client,
-        whitelist_path=options.get(
-            CONF_WHITELIST_PATH,
-            entry.data.get(CONF_WHITELIST_PATH),
+        whitelist_path=_config_path(
+            options.get(CONF_WHITELIST_PATH, entry.data.get(CONF_WHITELIST_PATH))
         ),
         watchlist_path=phone_path,
         match_by=options.get(CONF_MATCH_BY, entry.data.get(CONF_MATCH_BY, DEFAULT_MATCH_BY)),
@@ -104,10 +108,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             CONF_SCAN_INTERVAL,
             entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
         ),
-        monitored_path=options.get(
-            CONF_MONITORED_PATH,
-            entry.data.get(CONF_MONITORED_PATH)
-            or hass.config.path(DEFAULT_MONITORED_FILENAME),
+        monitored_path=_config_path(
+            options.get(
+                CONF_MONITORED_PATH,
+                entry.data.get(CONF_MONITORED_PATH)
+                or hass.config.path(DEFAULT_MONITORED_FILENAME),
+            )
         ),
     )
     await coordinator.async_config_entry_first_refresh()
