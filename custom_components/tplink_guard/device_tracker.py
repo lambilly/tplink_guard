@@ -89,6 +89,9 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
             hostname = self._lookup_hostname()
             id_part = _slugify(hostname) if hostname else f"terminal_{self._mac[-6:].lower()}"
         self._attr_name = id_part or f"terminal_{self._mac[-6:].lower()}"
+        # Without a suggested object id HA 2026.11 prepends the device
+        # name ("TPLink Guard") to the generated entity id.
+        self._attr_suggested_object_id = self._attr_name
 
         # Friendly name shown in the UI: prefer the custom Chinese name,
         # then the hostname, then the MAC.

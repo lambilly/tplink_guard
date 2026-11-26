@@ -203,7 +203,9 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
-        self._attr_suggested_object_id = f"tplink_guard_{OBJECT_IDS[description.key]}"
+        # No "tplink_guard_" prefix: without a suggested id HA 2026.11
+        # prepends the device name ("TPLink Guard") to the generated id.
+        self._attr_suggested_object_id = OBJECT_IDS[description.key]
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry_id)},
             name="TPLink Guard",

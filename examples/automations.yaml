@@ -9,7 +9,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
+      entity_id: binary_sensor.unknown_terminal_present
       from: "off"
       to: "on"
   action:
@@ -18,7 +18,7 @@
         notification_id: tplink_guard_unknown
         title: 主路由发现陌生终端
         message: >-
-          陌生终端 IP：{{ state_attr('sensor.tplink_guard_unknown_terminal_ip', 'devices')
+          陌生终端 IP：{{ state_attr('sensor.unknown_terminal_ip', 'devices')
           | map(attribute='ip') | join(', ') }}
 
 - alias: 主路由陌生终端已离线
@@ -26,7 +26,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
+      entity_id: binary_sensor.unknown_terminal_present
       from: "on"
       to: "off"
   action:
@@ -39,7 +39,7 @@
   mode: single
   trigger:
     - platform: state
-      entity_id: binary_sensor.tplink_guard_phone_online
+      entity_id: binary_sensor.phone_online
       from: "off"
       to: "on"
   action:
@@ -48,5 +48,5 @@
         notification_id: tplink_guard_phone_online
         title: 手机终端已上线
         message: >-
-          手机终端 IP：{{ state_attr('binary_sensor.tplink_guard_phone_online', 'devices')
+          手机终端 IP：{{ state_attr('binary_sensor.phone_online', 'devices')
           | map(attribute='ip') | join(', ') }}

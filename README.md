@@ -50,26 +50,26 @@
 
 | 实体 ID | 英文名 | 含义 |
 |---|---|---|
-| `sensor.tplink_guard_online_terminal_count` | Online Terminal Count | 当前在线终端数 |
-| `sensor.tplink_guard_whitelist_online_count` | Whitelist Online Count | 白名单内在线数 |
-| `sensor.tplink_guard_unknown_terminal_count` | Unknown Terminal Count | 陌生在线终端数 |
-| `sensor.tplink_guard_unknown_terminal_ip` | Unknown Terminal IP | 陌生终端 IP 列表 |
-| `sensor.tplink_guard_whitelist_terminal_count` | Whitelist Terminal Count | 白名单终端数 |
-| `sensor.tplink_guard_static_ip_count` | Static IP Count | 静态分配终端数（属性含启用数与固件上限 80） |
-| `sensor.tplink_guard_phone_online_count` | Phone Online Count | 手机名单终端在线数 |
-| `sensor.tplink_guard_phone_offline_count` | Phone Offline Count | 手机名单终端离线数 |
-| `sensor.tplink_guard_phone_online_ip` | Phone Online IP | 手机名单在线 IP 列表 |
+| `sensor.online_terminal_count` | Online Terminal Count | 当前在线终端数 |
+| `sensor.whitelist_online_count` | Whitelist Online Count | 白名单内在线数 |
+| `sensor.unknown_terminal_count` | Unknown Terminal Count | 陌生在线终端数 |
+| `sensor.unknown_terminal_ip` | Unknown Terminal IP | 陌生终端 IP 列表 |
+| `sensor.whitelist_terminal_count` | Whitelist Terminal Count | 白名单终端数 |
+| `sensor.static_ip_count` | Static IP Count | 静态分配终端数（属性含启用数与固件上限 80） |
+| `sensor.phone_online_count` | Phone Online Count | 手机名单终端在线数 |
+| `sensor.phone_offline_count` | Phone Offline Count | 手机名单终端离线数 |
+| `sensor.phone_online_ip` | Phone Online IP | 手机名单在线 IP 列表 |
 | `sensor.guest_visit_count` | Guest Visit Count | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
-| `sensor.tplink_guard_monitored_online_count` | Monitored Online Count | 监控终端名单在线数 |
-| `sensor.tplink_guard_monitored_offline_count` | Monitored Offline Count | 监控终端名单离线数 |
-| `sensor.tplink_guard_monitored_terminal_count` | Monitored Terminal Count | 监控终端名单总台数 |
-| `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
-| `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
+| `sensor.monitored_online_count` | Monitored Online Count | 监控终端名单在线数 |
+| `sensor.monitored_offline_count` | Monitored Offline Count | 监控终端名单离线数 |
+| `sensor.monitored_terminal_count` | Monitored Terminal Count | 监控终端名单总台数 |
+| `binary_sensor.unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
+| `binary_sensor.phone_online` | Phone Online | 在线 / 离线 |
 | `device_tracker.<自定义ID>` | <自定义中文名> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
 
-> **升级说明**：上表是全新安装按 `suggested_object_id` 生成的 ID。从旧版本（中文名称）升级时，HA 实体注册表可能仍保留早期的拼音 ID，需在「设置 → 设备与服务 → 实体」中按上表改名，或先删除再重建，自动化里的 ID 也要同步替换。
+> **升级说明**：上表是全新安装生成的实体 ID（自 1.2.5 起**不带** `tplink_guard_` 前缀；1.2.4 及更早版本的新安装会带前缀，如 `sensor.tplink_guard_online_terminal_count`）。已注册的实体 ID 不会随版本自动改变——旧安装需在「设置 → 设备与服务 → 实体」中按上表改名，或删除集成后重新添加，自动化里的 ID 也要同步替换。
 
-`sensor.guest_visit_count` 与旧版 Node-RED「来访客人」流同标识（state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` 完全一致），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。注意：全新安装时该实体 ID 会按名称生成为 `sensor.tplink_guard_guest_visit_count`，如需与旧流一致的 `sensor.guest_visit_count`，可在实体注册表中手动改名。
+`sensor.guest_visit_count` 与旧版 Node-RED「来访客人」流同标识（state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` 完全一致），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。注意：全新安装时该实体 ID 会按名称生成为 `sensor.guest_visit_count`，如需与旧流一致的 `sensor.guest_visit_count`，可在实体注册表中手动改名。
 
 两个 binary_sensor 的状态文字通过实体翻译显示为「发现陌生终端 / 无陌生终端」与「在线 / 离线」，避免默认「开启 / 关闭」的歧义。
 
@@ -110,7 +110,7 @@ AA-BB-CC-DD-EE-02
 
 ## 给自动化 / Node-RED 使用
 
-`sensor.tplink_guard_phone_online_ip` 的 `watchlist` 属性是一个数组，包含**完整的关注名单**（含离线设备）：
+`sensor.phone_online_ip` 的 `watchlist` 属性是一个数组，包含**完整的关注名单**（含离线设备）：
 
 ```json
 [
@@ -118,7 +118,7 @@ AA-BB-CC-DD-EE-02
 ]
 ```
 
-`binary_sensor.tplink_guard_phone_online` 与 `sensor.tplink_guard_phone_online_ip` 的 `devices` 属性则是**当前在线**的关注终端。
+`binary_sensor.phone_online` 与 `sensor.phone_online_ip` 的 `devices` 属性则是**当前在线**的关注终端。
 
 因此自动化 / Node-RED 只需读取这两个实体属性即可判断「哪些关注的人在家」，**不需要在脚本里硬编码 MAC、姓名或昵称**，也不需要额外读取名单文件。增删家人时只改手机名单 TXT 一行即可。
 
