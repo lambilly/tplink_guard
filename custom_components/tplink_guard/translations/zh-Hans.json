@@ -46,12 +46,6 @@
   },
   "entity": {
     "binary_sensor": {
-      "unknown_present": {
-        "state": {
-          "on": "发现陌生终端",
-          "off": "无陌生终端"
-        }
-      },
       "watched_online": {
         "state": {
           "on": "在线",

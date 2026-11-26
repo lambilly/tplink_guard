@@ -39,7 +39,6 @@ DESCRIPTIONS: tuple[TPLinkGuardBinaryDescription, ...] = (
         key="unknown_present",
         name="Unknown Terminal Present",
         icon="mdi:shield-alert",
-        translation_key="unknown_present",
         count_key="unknown_count",
         devices_key="unknown_devices",
     ),
