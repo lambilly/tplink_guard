@@ -34,19 +34,19 @@
       data:
         notification_id: tplink_guard_unknown
 
-- alias: 主路由关注终端上线提醒
-  description: 白名单中标记为关注的终端上线时推送通知
+- alias: 主路由手机终端上线提醒
+  description: 手机名单中的终端上线时推送通知
   mode: single
   trigger:
     - platform: state
-      entity_id: binary_sensor.tplink_guard_watched_terminal_online
+      entity_id: binary_sensor.tplink_guard_phone_online
       from: "off"
       to: "on"
   action:
     - service: persistent_notification.create
       data:
-        notification_id: tplink_guard_watched_terminal_online
-        title: 关注终端已上线
+        notification_id: tplink_guard_phone_online
+        title: 手机终端已上线
         message: >-
-          关注终端 IP：{{ state_attr('binary_sensor.tplink_guard_watched_terminal_online', 'devices')
+          手机终端 IP：{{ state_attr('binary_sensor.tplink_guard_phone_online', 'devices')
           | map(attribute='ip') | join(', ') }}

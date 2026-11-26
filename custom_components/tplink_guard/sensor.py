@@ -31,9 +31,9 @@ OBJECT_IDS: dict[str, str] = {
     "unknown_ips": "unknown_terminal_ip",
     "whitelist_count": "whitelist_terminal_count",
     "static_count": "static_ip_count",
-    "watched_online_count": "watched_online_terminal_count",
-    "watched_offline_count": "watched_offline_terminal_count",
-    "watched_ips": "watched_terminal_ip",
+    "watched_online_count": "phone_online_count",
+    "watched_offline_count": "phone_offline_count",
+    "watched_ips": "phone_online_ip",
     # Guest visit sensor keeps the legacy Node-RED identifier:
     # entity_id is sensor.guest_visit_count (no tplink_guard prefix).
     "guest_visit": "guest_visit_count",
@@ -66,17 +66,17 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     ),
     SensorEntityDescription(
         key="watched_online_count",
-        name="Watched Online Terminal Count",
+        name="Phone Online Count",
         icon="mdi:eye-outline",
     ),
     SensorEntityDescription(
         key="watched_offline_count",
-        name="Watched Offline Terminal Count",
+        name="Phone Offline Count",
         icon="mdi:eye-off-outline",
     ),
     SensorEntityDescription(
         key="watched_ips",
-        name="Watched Terminal IP",
+        name="Phone Online IP",
         icon="mdi:eye",
     ),
     SensorEntityDescription(
@@ -119,7 +119,7 @@ def guest_stats(data: dict[str, Any]) -> dict[str, Any]:
     watchlist = data.get(ATTR_WATCHLIST) or []
     online_macs = {
         _clean_mac(device.get("mac"))
-        for device in data.get("watched_online") or []
+        for device in data.get("phone_online") or []
     }
 
     all_list: list[str] = []
@@ -209,7 +209,7 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             ips = [device["ip"] for device in data.get("unknown_devices", []) if device.get("ip")]
             return ", ".join(ips) if ips else "none"
         if key == "watched_ips":
-            ips = [device["ip"] for device in data.get("watched_online", []) if device.get("ip")]
+            ips = [device["ip"] for device in data.get("phone_online", []) if device.get("ip")]
             return ", ".join(ips) if ips else "none"
         return data.get(key)
 
@@ -225,9 +225,9 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             }
         if self.entity_description.key == "watched_ips":
             return {
-                ATTR_DEVICES: data.get("watched_online", []),
+                ATTR_DEVICES: data.get("phone_online", []),
                 ATTR_WATCHLIST: data.get(ATTR_WATCHLIST, []),
-                "watched_count": data.get("watched_count"),
+                "phone_count": data.get("phone_count"),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }
         if self.entity_description.key == "online_count":

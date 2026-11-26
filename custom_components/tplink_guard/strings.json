@@ -11,8 +11,9 @@
           "password": "密码",
           "scan_interval": "刷新周期（秒）",
           "whitelist_path": "白名单文件路径",
-          "watchlist_path": "关注终端文件路径",
-          "match_by": "匹配方式"
+          "watchlist_path": "Phone list file path",
+          "match_by": "匹配方式",
+          "monitored_path": "Monitored terminals list file path"
         }
       }
     },
@@ -28,7 +29,7 @@
   "services": {
     "reload_whitelist": {
       "name": "重新加载名单",
-      "description": "立即从配置的文件路径重新读取白名单与关注名单，并刷新所有实体状态。"
+      "description": "Re-read the configured whitelist, phone list and monitored terminals list files and refresh all entities."
     }
   },
   "options": {
@@ -38,8 +39,9 @@
         "data": {
           "scan_interval": "刷新周期（秒）",
           "whitelist_path": "白名单文件路径",
-          "watchlist_path": "关注终端文件路径",
-          "match_by": "匹配方式"
+          "watchlist_path": "Phone list file path",
+          "match_by": "匹配方式",
+          "monitored_path": "Monitored terminals list file path"
         }
       }
     }

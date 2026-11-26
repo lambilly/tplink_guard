@@ -23,12 +23,14 @@ import homeassistant.helpers.config_validation as cv
 from .api import RouterAuthError, RouterClient, RouterConnectionError
 from .const import (
     CONF_MATCH_BY,
+    CONF_MONITORED_PATH,
     CONF_WATCHLIST_PATH,
     CONF_WHITELIST_PATH,
     DEFAULT_HOST,
     DEFAULT_MATCH_BY,
+    DEFAULT_MONITORED_FILENAME,
+    DEFAULT_PHONE_FILENAME,
     DEFAULT_PORT,
-    DEFAULT_WATCHLIST_FILENAME,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_USERNAME,
     DEFAULT_WHITELIST_FILENAME,
@@ -39,7 +41,9 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _user_schema(default_whitelist: str, default_watchlist: str) -> vol.Schema:
+def _user_schema(
+    default_whitelist: str, default_phone: str, default_monitored: str
+) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
@@ -53,7 +57,10 @@ def _user_schema(default_whitelist: str, default_watchlist: str) -> vol.Schema:
                 CONF_WHITELIST_PATH, default=default_whitelist
             ): str,
             vol.Optional(
-                CONF_WATCHLIST_PATH, default=default_watchlist
+                CONF_WATCHLIST_PATH, default=default_phone
+            ): str,
+            vol.Optional(
+                CONF_MONITORED_PATH, default=default_monitored
             ): str,
             vol.Optional(CONF_MATCH_BY, default=DEFAULT_MATCH_BY): vol.In(MATCH_MODES),
         }
@@ -76,6 +83,10 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
                 default=current.get(CONF_WATCHLIST_PATH, ""),
             ): str,
             vol.Optional(
+                CONF_MONITORED_PATH,
+                default=current.get(CONF_MONITORED_PATH, ""),
+            ): str,
+            vol.Optional(
                 CONF_MATCH_BY,
                 default=current.get(CONF_MATCH_BY, DEFAULT_MATCH_BY),
             ): vol.In(MATCH_MODES),
@@ -93,7 +104,8 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         errors: dict[str, str] = {}
         default_whitelist = self.hass.config.path(DEFAULT_WHITELIST_FILENAME)
-        default_watchlist = self.hass.config.path(DEFAULT_WATCHLIST_FILENAME)
+        default_phone = self.hass.config.path(DEFAULT_PHONE_FILENAME)
+        default_monitored = self.hass.config.path(DEFAULT_MONITORED_FILENAME)
 
         if user_input is not None:
             await self.async_set_unique_id(
@@ -125,7 +137,9 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_user_schema(default_whitelist, default_watchlist),
+            data_schema=_user_schema(
+                default_whitelist, default_phone, default_monitored
+            ),
             errors=errors,
         )
 

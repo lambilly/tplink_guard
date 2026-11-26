@@ -197,6 +197,52 @@ def load_whitelist(path: str | os.PathLike[str] | None) -> Whitelist:
         return Whitelist()
 
 
+def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
+    """Load the monitored-terminal list.
+
+    Each line defines a terminal that gets its own device_tracker entity:
+    ``MAC, entity_id, 中文名称``. The id and Chinese name are optional;
+    missing fields are auto-filled later from the router hostname.
+    Comment lines start with ``#``.
+    """
+    if not path:
+        return []
+    file_path = Path(path)
+    if not file_path.exists():
+        _LOGGER.warning("Monitored list file not found: %s", file_path)
+        return []
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    try:
+        lines = file_path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as err:
+        _LOGGER.error("Failed to read monitored list %s: %s", file_path, err)
+        return []
+    for line in lines:
+        text = line.strip()
+        if not text or text.startswith("#"):
+            continue
+        body = text.split("#", 1)[0]
+        fields = [field.strip() for field in body.split(",") if field.strip()]
+        if not fields:
+            continue
+        mac = normalize_mac(fields[0])
+        if len(mac) != 12:
+            _LOGGER.debug("Skipping invalid monitored line: %s", text)
+            continue
+        if mac in seen:
+            continue
+        seen.add(mac)
+        result.append(
+            {
+                "mac": mac,
+                "entity_id": fields[1] if len(fields) > 1 else "",
+                "name": fields[2] if len(fields) > 2 else "",
+            }
+        )
+    return result
+
+
 def whitelist_mtime(path: str | os.PathLike[str] | None) -> float:
     """Return file mtime so changes can be picked up without a reload."""
     if not path:

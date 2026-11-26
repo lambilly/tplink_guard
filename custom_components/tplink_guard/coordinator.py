@@ -13,6 +13,7 @@ from .api import RouterAuthError, RouterClient, RouterConnectionError
 from .const import ATTR_LAST_UPDATE, ATTR_WATCHLIST, ATTR_WHITELIST_COUNT, DOMAIN
 from .whitelist import (
     Whitelist,
+    load_monitored,
     load_whitelist,
     split_watch_note,
     summarize_device,
@@ -33,6 +34,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         watchlist_path: str | None,
         match_by: str,
         scan_interval: int,
+        monitored_path: str | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -48,6 +50,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.watchlist: Whitelist = load_whitelist(watchlist_path)
         self._whitelist_mtime = whitelist_mtime(whitelist_path)
         self._watchlist_mtime = whitelist_mtime(watchlist_path)
+        self.monitored_path = monitored_path
+        self.monitored: list[dict[str, str]] = load_monitored(monitored_path)
+        self._monitored_mtime = whitelist_mtime(monitored_path)
         self.devices: dict[str, dict[str, Any]] = {}
 
     async def async_reload_whitelist(self) -> None:
@@ -56,6 +61,8 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.watchlist = load_whitelist(self.watchlist_path)
         self._whitelist_mtime = whitelist_mtime(self.whitelist_path)
         self._watchlist_mtime = whitelist_mtime(self.watchlist_path)
+        self.monitored = load_monitored(self.monitored_path)
+        self._monitored_mtime = whitelist_mtime(self.monitored_path)
         await self.async_request_refresh()
 
     def _async_refresh_lists_if_changed(self) -> None:
@@ -69,6 +76,11 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Watchlist changed, reloading")
             self.watchlist = load_whitelist(self.watchlist_path)
             self._watchlist_mtime = current
+        current = whitelist_mtime(self.monitored_path)
+        if current and current != self._monitored_mtime:
+            _LOGGER.debug("Monitored list changed, reloading")
+            self.monitored = load_monitored(self.monitored_path)
+            self._monitored_mtime = current
 
     async def _async_update_data(self) -> dict[str, Any]:
         self._async_refresh_lists_if_changed()
@@ -101,8 +113,8 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
 
         unknown = [device for device in devices if not device["known"]]
-        watched_online = [device for device in devices if device["watched"]]
-        watched_offline = self.watchlist.count - len(watched_online)
+        phone_online = [device for device in devices if device["watched"]]
+        phone_offline = self.watchlist.count - len(phone_online)
         if unknown:
             _LOGGER.debug("Unknown online devices: %s", [d["ip"] for d in unknown])
 
@@ -151,10 +163,10 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "known_count": len(devices) - len(unknown),
             "unknown_count": len(unknown),
             "unknown_devices": unknown,
-            "watched_count": self.watchlist.count,
-            "watched_online_count": len(watched_online),
-            "watched_offline_count": max(watched_offline, 0),
-            "watched_online": watched_online,
+            "phone_count": self.watchlist.count,
+            "phone_online_count": len(phone_online),
+            "phone_offline_count": max(phone_offline, 0),
+            "phone_online": phone_online,
             ATTR_WATCHLIST: watchlist_devices,
             "static_count": len(static_devices),
             "static_enabled_count": static_enabled,

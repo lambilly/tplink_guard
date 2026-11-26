@@ -11,8 +11,9 @@
           "password": "Password",
           "scan_interval": "Scan interval (seconds)",
           "whitelist_path": "Whitelist file path",
-          "watchlist_path": "Watchlist file path",
-          "match_by": "Match by"
+          "watchlist_path": "Phone list file path",
+          "match_by": "Match by",
+          "monitored_path": "Monitored terminals list file path"
         }
       }
     },
@@ -28,7 +29,7 @@
   "services": {
     "reload_whitelist": {
       "name": "Reload lists",
-      "description": "Re-read the configured whitelist and watchlist files and refresh all entities."
+      "description": "Re-read the configured whitelist, phone list and monitored terminals list files and refresh all entities."
     }
   },
   "options": {
@@ -38,8 +39,9 @@
         "data": {
           "scan_interval": "Scan interval (seconds)",
           "whitelist_path": "Whitelist file path",
-          "watchlist_path": "Watchlist file path",
-          "match_by": "Match by"
+          "watchlist_path": "Phone list file path",
+          "match_by": "Match by",
+          "monitored_path": "Monitored terminals list file path"
         }
       }
     }

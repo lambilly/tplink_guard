@@ -22,7 +22,7 @@ from .coordinator import TPLinkGuardCoordinator
 # English object ids -> entity_id is <platform>.tplink_guard_<object_id>
 OBJECT_IDS: dict[str, str] = {
     "unknown_present": "unknown_terminal_present",
-    "watched_online": "watched_terminal_online",
+    "watched_online": "phone_online",
 }
 
 
@@ -44,11 +44,11 @@ DESCRIPTIONS: tuple[TPLinkGuardBinaryDescription, ...] = (
     ),
     TPLinkGuardBinaryDescription(
         key="watched_online",
-        name="Watched Terminal Online",
+        name="Phone Online",
         icon="mdi:bell-outline",
         translation_key="watched_online",
-        count_key="watched_online_count",
-        devices_key="watched_online",
+        count_key="phone_online_count",
+        devices_key="phone_online",
     ),
 )
 

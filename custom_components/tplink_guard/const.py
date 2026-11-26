@@ -4,10 +4,11 @@ from __future__ import annotations
 
 DOMAIN = "tplink_guard"
 
-PLATFORMS: list[str] = ["sensor", "binary_sensor"]
+PLATFORMS: list[str] = ["sensor", "binary_sensor", "device_tracker"]
 
 CONF_WHITELIST_PATH = "whitelist_path"
 CONF_WATCHLIST_PATH = "watchlist_path"
+CONF_MONITORED_PATH = "monitored_path"
 CONF_MATCH_BY = "match_by"
 
 DEFAULT_NAME = "TPLink Guard"
@@ -16,7 +17,8 @@ DEFAULT_PORT = 80
 DEFAULT_USERNAME = "admin"
 DEFAULT_SCAN_INTERVAL = 60
 DEFAULT_WHITELIST_FILENAME = "tplink_guard_whitelist.txt"
-DEFAULT_WATCHLIST_FILENAME = "tplink_guard_watchlist.txt"
+DEFAULT_PHONE_FILENAME = "tplink_guard_phone.txt"
+DEFAULT_MONITORED_FILENAME = "tplink_guard_monitored.txt"
 DEFAULT_MATCH_BY = "both"
 DEFAULT_TIMEOUT = 10
 

@@ -1,6 +1,8 @@
 # ===== 隐私数据：真实家庭网络清单，仅本地使用，绝不推送 =====
 tplink_guard_whitelist.txt
 tplink_guard_watchlist.txt
+tplink_guard_phone.txt
+tplink_guard_monitored.txt
 *.bak
 *.bak-*
 dhcp_client_list.txt
