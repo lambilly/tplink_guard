@@ -43,8 +43,8 @@ OBJECT_IDS: dict[str, str] = {
     "monitored_online_count": "monitored_online_count",
     "monitored_offline_count": "monitored_offline_count",
     "monitored_count": "monitored_terminal_count",
-    # Guest visit sensor keeps the legacy Node-RED identifier:
-    # entity_id is sensor.guest_visit_count (no tplink_guard prefix).
+    # Guest visit sensor follows HA's natural prefixed id:
+    # sensor.tplink_guard_guest_visit_count.
     "guest_visit": "guest_visit_count",
 }
 
@@ -199,12 +199,12 @@ async def async_setup_entry(
 
 
 def _pin_guest_identity(registry, entry: ConfigEntry, entity) -> None:
-    """Pin the legacy guest sensor identity in the registry.
+    """Pin the guest sensor display name in the registry.
 
-    The Node-RED guest flow requires entity_id sensor.guest_visit_count.
-    HA 2026.11 derives ids from "<integration title> <name>" and ignores
-    suggested_object_id, so pin id and name before the entity registers —
-    equivalent to a manual registry rename, which stays stable.
+    The entity_id follows HA 2026.11's natural scheme
+    (sensor.tplink_guard_guest_visit_count); Node-RED references the
+    prefixed id, so only the display name is pinned here — renaming the
+    name alone never regenerates the id.
     """
     entry_obj = registry.async_get_or_create(
         "sensor",
@@ -213,18 +213,12 @@ def _pin_guest_identity(registry, entry: ConfigEntry, entity) -> None:
         config_entry=entry,
         original_name=entity._attr_name,
     )
-    updates: dict[str, str] = {}
-    if entry_obj.entity_id != "sensor.guest_visit_count":
-        updates["new_entity_id"] = "sensor.guest_visit_count"
     if entry_obj.name != "Guest Visit Count":
-        updates["name"] = "Guest Visit Count"
-    if updates:
         try:
-            registry.async_update_entity(entry_obj.entity_id, **updates)
-        except Exception:  # noqa: BLE001 - e.g. id already taken
+            registry.async_update_entity(entry_obj.entity_id, name="Guest Visit Count")
+        except Exception:  # noqa: BLE001
             _LOGGER.warning(
-                "Could not pin guest sensor to sensor.guest_visit_count",
-                exc_info=True,
+                "Could not pin guest sensor display name", exc_info=True
             )
 
 
@@ -252,13 +246,9 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             manufacturer="TP-Link",
         )
         if description.key == "guest_visit":
-            # Keep the legacy Node-RED identity: friendly name "Guest Visit
-            # Count" with no device prefix in the display name, while the
-            # entity IS attached to the TPLink Guard device (visible in the
-            # integration/device page). The entity_id is pinned to
-            # sensor.guest_visit_count by _pin_guest_identity; a pinned
-            # registry name keeps the id stable even with a device attached
-            # (same mechanism as the renamed device_trackers).
+            # Attached to the TPLink Guard device; entity id follows the
+            # natural prefixed scheme (sensor.tplink_guard_guest_visit_count,
+            # used by Node-RED). Display name pinned as "Guest Visit Count".
             self._attr_has_entity_name = False
             self._attr_name = description.name
             self._attr_native_unit_of_measurement = "人"

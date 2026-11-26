@@ -59,7 +59,7 @@
 | `sensor.tplink_guard_phone_online_count` | Phone Online Count | 手机名单终端在线数 |
 | `sensor.tplink_guard_phone_offline_count` | Phone Offline Count | 手机名单终端离线数 |
 | `sensor.tplink_guard_phone_online_ip` | Phone Online IP | 手机名单在线 IP 列表 |
-| `sensor.guest_visit_count` | Guest Visit Count | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
+| `sensor.tplink_guard_guest_visit_count` | Guest Visit Count | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
 | `sensor.tplink_guard_monitored_online_count` | Monitored Online Count | 监控终端名单在线数 |
 | `sensor.tplink_guard_monitored_offline_count` | Monitored Offline Count | 监控终端名单离线数 |
 | `sensor.tplink_guard_monitored_terminal_count` | Monitored Terminal Count | 监控终端名单总台数 |
@@ -67,9 +67,9 @@
 | `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
 | `device_tracker.<实体ID>` | <实体ID> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
 
-> **升级说明**：HA 2026.11 强制按「集成名前缀 + 实体名」生成全新安装的实体 ID（`_attr_suggested_object_id` 被忽略），因此新安装的实体默认带 `tplink_guard_` 前缀。例外：`sensor.guest_visit_count` 由集成在注册表固定（兼容旧 Node-RED 流）。已注册的实体 ID 不会随版本自动改变；需要自定义 ID（如 `device_tracker.hp_imac`）可在「设置 → 设备与服务 → 实体」中改名，集成不会覆盖手动改名。
+> **升级说明**：HA 2026.11 强制按「集成名前缀 + 实体名」生成全新安装的实体 ID（`_attr_suggested_object_id` 被忽略），因此新安装的实体默认带 `tplink_guard_` 前缀。所有实体统一使用 `tplink_guard_` 前缀（Node-RED 流已按带前缀 ID 引用）。已注册的实体 ID 不会随版本自动改变；需要自定义 ID（如 `device_tracker.hp_imac`）可在「设置 → 设备与服务 → 实体」中改名，集成不会覆盖手动改名。
 
-`sensor.guest_visit_count` 与旧版 Node-RED「来访客人」流同标识（state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` 完全一致），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。注意：全新安装时该实体 ID 会按名称生成为 `sensor.guest_visit_count`，如需与旧流一致的 `sensor.guest_visit_count`，可在实体注册表中手动改名。
+`sensor.tplink_guard_guest_visit_count` 为来访统计实体（state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` 完全一致），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。注意：全新安装时该实体 ID 会按名称生成为 `sensor.guest_visit_count`，如需与旧流一致的 `sensor.guest_visit_count`，可在实体注册表中手动改名。
 
 两个 binary_sensor 的状态文字通过实体翻译显示为「发现陌生终端 / 无陌生终端」与「在线 / 离线」，避免默认「开启 / 关闭」的歧义。
 
