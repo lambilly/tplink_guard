@@ -29,7 +29,7 @@
 ## 安装
 
 1. 把 `custom_components/tplink_guard/` 整个目录复制到 HA 配置目录下的 `custom_components/`。
-2. 把 `examples/` 下的两个示例文件复制到 HA 配置目录，并改名为：
+2. 把 `examples/` 下的示例文件复制到 **`custom_components/tplink_guard/lists/`**（随集成目录一起），并改名为：
    - `tplink_guard_whitelist.txt`（白名单）
    - `tplink_guard_phone.txt`（手机名单）
    - `tplink_guard_monitored.txt`（监控终端名单，不需要逐台实体可留空）
@@ -38,10 +38,11 @@
 4. 在 HA 中进入「设置 → 设备与服务 → 添加集成」，搜索 `TPLink Guard`，按提示填写：
    - 主机地址、管理端口、用户名、密码
    - 刷新周期（秒）
-   - 白名单 / 手机名单 / 监控终端名单文件路径（默认 `/config/tplink_guard_whitelist.txt`、`/config/tplink_guard_phone.txt`、`/config/tplink_guard_monitored.txt`）
+   - 白名单 / 手机名单 / 监控终端名单文件路径（默认 `custom_components/tplink_guard/lists/` 下的三个文件）
    - 匹配方式（建议 `both`）
 
 > 密码只保存在 HA 的 `.storage/core.config_entries` 中，不会写入本项目的日志或文件。
+> **升级提示**：名单存放在集成目录内，更新集成时请只覆盖代码文件，勿删除 `lists/` 子目录；旧版本把名单放在 `/config` 根目录的路径依然会被自动重定向到 `lists/`，无需手动修改。
 
 ## 实体
 
@@ -135,7 +136,7 @@ examples/                         # 名单示例与自动化示例
 LICENSE                           # MIT
 ```
 
-真实名单文件（`tplink_guard_whitelist.txt` / `tplink_guard_phone.txt` / `tplink_guard_monitored.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
+真实名单文件（`custom_components/tplink_guard/lists/` 下的 `tplink_guard_whitelist.txt` / `tplink_guard_phone.txt` / `tplink_guard_monitored.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
 
 ## 免责声明
 

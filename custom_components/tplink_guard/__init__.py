@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -21,10 +22,13 @@ from .const import (
     CONF_MONITORED_PATH,
     CONF_WATCHLIST_PATH,
     CONF_WHITELIST_PATH,
+    DEFAULT_LISTS_RELDIR,
     DEFAULT_MATCH_BY,
     DEFAULT_MONITORED_FILENAME,
+    DEFAULT_PHONE_FILENAME,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
+    DEFAULT_WHITELIST_FILENAME,
     DOMAIN,
     PLATFORMS,
     SERVICE_RELOAD_WHITELIST,
@@ -69,6 +73,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if value.endswith("tplink_guard_watchlist.txt"):
             value = value[: -len("tplink_guard_watchlist.txt")] + "tplink_guard_phone.txt"
             _LOGGER.debug("Redirected watchlist path to phone list: %s", value)
+        # Migration: list files moved from /config into the integration
+        # subfolder custom_components/tplink_guard/lists/.
+        lists_dir = hass.config.path(DEFAULT_LISTS_RELDIR)
+        for filename in (
+            DEFAULT_WHITELIST_FILENAME,
+            DEFAULT_PHONE_FILENAME,
+            DEFAULT_MONITORED_FILENAME,
+        ):
+            old_path = hass.config.path(filename)
+            if value == old_path:
+                value = os.path.join(lists_dir, filename)
+                _LOGGER.debug("Redirected list path into %s: %s", DEFAULT_LISTS_RELDIR, value)
+                break
         return value
 
     phone_path = _config_path(

@@ -27,6 +27,7 @@ from .const import (
     CONF_WATCHLIST_PATH,
     CONF_WHITELIST_PATH,
     DEFAULT_HOST,
+    DEFAULT_LISTS_RELDIR,
     DEFAULT_MATCH_BY,
     DEFAULT_MONITORED_FILENAME,
     DEFAULT_PHONE_FILENAME,
@@ -103,9 +104,9 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         errors: dict[str, str] = {}
-        default_whitelist = self.hass.config.path(DEFAULT_WHITELIST_FILENAME)
-        default_phone = self.hass.config.path(DEFAULT_PHONE_FILENAME)
-        default_monitored = self.hass.config.path(DEFAULT_MONITORED_FILENAME)
+        default_whitelist = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_WHITELIST_FILENAME)
+        default_phone = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_PHONE_FILENAME)
+        default_monitored = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_MONITORED_FILENAME)
 
         if user_input is not None:
             await self.async_set_unique_id(
