@@ -4,9 +4,11 @@ Each line of the monitored list file (``lists/monitored.txt`` inside the
 integration folder) defines one terminal that gets its own device_tracker
 entity showing whether it is online (home) or offline (not_home).
 
-Line format: ``MAC, entity_id, 中文名称``. Both the entity id and the
-Chinese name are optional; missing values are derived from the router
-hostname (falling back to the MAC).
+Line format: ``MAC, entity_id, 备注``. The second field decides the entity
+id (``device_tracker.<entity_id>``) and the entity/friendly name. The third
+field is a plain-text note for documentation only and is never sent to HA.
+Both the entity id and the note are optional; a missing entity id is
+derived from the router hostname (falling back to the MAC).
 """
 
 from __future__ import annotations
@@ -55,12 +57,44 @@ async def async_setup_entry(
 ) -> None:
     """Set up device trackers for monitored terminals."""
     coordinator: TPLinkGuardCoordinator = hass.data[DOMAIN][entry.entry_id]
+    registry = async_get_entity_registry(hass)
     entities: list[MonitoredTerminalTracker] = []
     for item in coordinator.monitored:
-        entities.append(
-            MonitoredTerminalTracker(coordinator, entry.entry_id, item)
-        )
+        entity = MonitoredTerminalTracker(coordinator, entry.entry_id, item)
+        _pin_tracker_identity(registry, entry, entity)
+        entities.append(entity)
     async_add_entities(entities)
+
+
+def _pin_tracker_identity(registry, entry: ConfigEntry, entity) -> None:
+    """Pin tracker entity ids and names in the registry.
+
+    HA 2026.11 derives ids from "<device name> <entity name>" and ignores
+    suggested_object_id, so the id is pinned explicitly here — the same
+    mechanism as the guest sensor: a registry entry with an explicitly set
+    id and name keeps both stable across restarts, even with a device
+    attached. The entity id becomes device_tracker.<second TXT field>.
+    """
+    wanted = f"device_tracker.{entity._attr_name}"
+    entry_obj = registry.async_get_or_create(
+        "device_tracker",
+        DOMAIN,
+        entity.unique_id,
+        config_entry=entry,
+        original_name=entity._attr_name,
+    )
+    updates: dict[str, str] = {}
+    if entry_obj.entity_id != wanted:
+        updates["new_entity_id"] = wanted
+    if entry_obj.name != entity._attr_name:
+        updates["name"] = entity._attr_name
+    if updates:
+        try:
+            registry.async_update_entity(entry_obj.entity_id, **updates)
+        except Exception:  # noqa: BLE001 - e.g. id already taken
+            _LOGGER.warning(
+                "Could not pin tracker identity to %s", wanted, exc_info=True
+            )
 
 
 class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
@@ -78,11 +112,9 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
         super().__init__(coordinator)
         self._mac = normalize_mac(item.get("mac"))
         custom_id = str(item.get("entity_id") or "").strip()
-        custom_name = str(item.get("name") or "").strip()
 
-        # Entity id: prefer the custom id from the TXT; otherwise derive
-        # from the router hostname (if the device is currently known)
-        # and finally fall back to the MAC.
+        # Entity id and friendly name both come from the second TXT field;
+        # the third field is a comment only and never reaches HA.
         if custom_id:
             id_part = custom_id.split(".")[-1].strip()
         else:
@@ -90,13 +122,9 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
             id_part = _slugify(hostname) if hostname else f"terminal_{self._mac[-6:].lower()}"
         self._attr_name = id_part or f"terminal_{self._mac[-6:].lower()}"
         # Without a suggested object id HA 2026.11 prepends the device
-        # name ("TPLink Guard") to the generated entity id.
+        # name ("TPLink Guard") to the generated entity id; the real id is
+        # pinned by _pin_tracker_identity anyway.
         self._attr_suggested_object_id = self._attr_name
-
-        # Friendly name shown in the UI: prefer the custom Chinese name,
-        # then the hostname, then the MAC.
-        hostname = self._lookup_hostname()
-        self._friendly = custom_name or hostname or self._mac
 
         self._attr_unique_id = f"{entry_id}_monitored_{self._mac}"
         self._attr_device_info = DeviceInfo(
@@ -146,16 +174,3 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
             "hostname": device.get("hostname", "") if device else "",
             ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
         }
-
-    async def async_added_to_hass(self) -> None:
-        """Apply the custom Chinese friendly name from the registry."""
-        await super().async_added_to_hass()
-        registry = async_get_entity_registry(self.hass)
-        registry_entry = registry.async_get(self.entity_id)
-        if registry_entry and registry_entry.name != self._friendly:
-            # HA >= 2026.11 renamed EntityRegistry.async_update to
-            # async_update_entity.
-            if hasattr(registry, "async_update_entity"):
-                registry.async_update_entity(self.entity_id, name=self._friendly)
-            else:  # pragma: no cover - older HA releases
-                registry.async_update(self.entity_id, name=self._friendly)

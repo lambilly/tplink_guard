@@ -16,7 +16,7 @@
 - **白名单 TXT**：每行格式 `MAC # 字段1,字段2,...`（逗号区隔，IP 不加括号），不使用引号
 - **手机名单 TXT**（`lists/phone.txt`，原关注名单）：每行格式与白名单相同，但只有同时存在于白名单中的设备才算关注终端
 - 手机名单备注字段为 `姓名,昵称,设备名`，解析后随实体属性 `watchlist` 输出
-- **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体ID,中文名称`，名单内每台终端自动生成一个 device_tracker 实体（在线 / 离线）
+- **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体ID,备注`，实体 ID 决定 device_tracker 实体（`device_tracker.<实体ID>`），第三列备注仅文档用途不进 HA
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -65,7 +65,7 @@
 | `sensor.tplink_guard_monitored_terminal_count` | Monitored Terminal Count | 监控终端名单总台数 |
 | `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
 | `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
-| `device_tracker.<自定义ID>` | <自定义中文名> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
+| `device_tracker.<实体ID>` | <实体ID> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
 
 > **升级说明**：HA 2026.11 强制按「集成名前缀 + 实体名」生成全新安装的实体 ID（`_attr_suggested_object_id` 被忽略），因此新安装的实体默认带 `tplink_guard_` 前缀。例外：`sensor.guest_visit_count` 由集成在注册表固定（兼容旧 Node-RED 流）。已注册的实体 ID 不会随版本自动改变；需要自定义 ID（如 `device_tracker.hp_imac`）可在「设置 → 设备与服务 → 实体」中改名，集成不会覆盖手动改名。
 
@@ -96,16 +96,17 @@ AA-BB-CC-DD-EE-01 # 张三,三哥,Phone-A
 
 不在白名单中的设备即使写入手机名单也不会生效。名单改完会自动重载，无需重启 HA。
 
-监控终端名单示例（字段：MAC,实体ID,中文名称，后两列可省略）：
+监控终端名单示例（字段：MAC,实体ID,备注，备注仅文档用途）：
 
 ```
-20-BD-1D-D7-85-57, hp_imac, 惠普电脑
+20-BD-1D-D7-85-57, hui_pu_dian_nao, 惠普电脑
 AA-BB-CC-DD-EE-01, dev_a, 设备A
 AA-BB-CC-DD-EE-02
 ```
 
-- `实体ID` 建议用英文（HA 按实体名生成 ID，中文名会变拼音）；填写时可带或不带 `device_tracker.` 前缀
-- 省略 `实体ID` 时按路由器主机名自动生成，省略 `中文名称` 时显示主机名或 MAC
+- `实体ID` 用英文/拼音，直接决定实体 ID 与显示名：`hui_pu_dian_nao` → `device_tracker.hui_pu_dian_nao`；填写时可带或不带 `device_tracker.` 前缀
+- `实体ID` 由集成固定写入实体注册表（id 与名称同时钉住），不受 HA 2026.11 自动命名规则影响，重启后保持稳定
+- 省略 `实体ID` 时按路由器主机名自动生成；第三列 `备注` 仅作 TXT 文档用途，不会写入 HA
 - 名单内每台终端生成一个 `device_tracker` 实体：在线为 `home`，离线为 `not_home`，属性含 `mac / ip / hostname / last_update`
 
 ## 给自动化 / Node-RED 使用

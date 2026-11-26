@@ -201,8 +201,9 @@ def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     """Load the monitored-terminal list.
 
     Each line defines a terminal that gets its own device_tracker entity:
-    ``MAC, entity_id, 中文名称``. The id and Chinese name are optional;
-    missing fields are auto-filled later from the router hostname.
+    ``MAC, entity_id, 备注``. The second field decides the entity id and
+    name; the third field is a documentation-only note and is ignored.
+    A missing entity id is auto-filled later from the router hostname.
     Comment lines start with ``#``.
     """
     if not path:
