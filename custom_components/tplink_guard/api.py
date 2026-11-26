@@ -189,11 +189,22 @@ class RouterClient:
             raise RouterConnectionError(str(err)) from err
 
     async def async_get_host_info(self) -> list[dict[str, Any]]:
-        """Return the router's online host list."""
+        """Return the router's online host list.
+
+        The host_info table keeps saved records for terminals that went
+        offline (``state: "offline"``), e.g. a laptop that left home long
+        ago. Only rows the router currently marks online are returned;
+        rows without a state field are kept (older firmware).
+        """
         data = await self._async_query(
             {"host_management": {"name": "host_info"}, "method": "get"}
         )
         hosts = _extract_hosts(data)
+        hosts = [
+            host
+            for host in hosts
+            if str(host.get("state", "online")).lower() in ("online", "on", "1")
+        ]
         _LOGGER.debug("host_info rows: %s", len(hosts))
         return hosts
 
