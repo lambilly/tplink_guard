@@ -51,6 +51,12 @@
           "on": "在线",
           "off": "离线"
         }
+      },
+      "unknown_present": {
+        "state": {
+          "on": "On",
+          "off": "Off"
+        }
       }
     }
   }

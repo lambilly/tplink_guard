@@ -51,6 +51,12 @@
           "on": "Online",
           "off": "Offline"
         }
+      },
+      "unknown_present": {
+        "state": {
+          "on": "On",
+          "off": "Off"
+        }
       }
     }
   }
