@@ -81,7 +81,7 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     ),
     SensorEntityDescription(
         key="guest_visit",
-        name="来访客人",
+        name="Guest Visit Count",
         icon="mdi:account-arrow-left-outline",
     ),
 )

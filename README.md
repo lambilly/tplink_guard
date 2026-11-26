@@ -56,13 +56,13 @@
 | `sensor.tplink_guard_watched_online_terminal_count` | Watched Online Terminal Count | 关注终端在线数 |
 | `sensor.tplink_guard_watched_offline_terminal_count` | Watched Offline Terminal Count | 关注终端离线数 |
 | `sensor.tplink_guard_watched_terminal_ip` | Watched Terminal IP | 关注终端在线 IP 列表 |
-| `sensor.guest_visit_count` | 来访客人 | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
+| `sensor.guest_visit_count` | Guest Visit Count | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
 | `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
 | `binary_sensor.tplink_guard_watched_terminal_online` | Watched Terminal Online | 在线 / 离线 |
 
 > **升级说明**：上表是全新安装按 `suggested_object_id` 生成的 ID。从旧版本（中文名称）升级时，HA 实体注册表可能仍保留早期的拼音 ID，需在「设置 → 设备与服务 → 实体」中按上表改名，或先删除再重建，自动化里的 ID 也要同步替换。
 
-`sensor.guest_visit_count` 与旧版 Node-RED「来访客人」流完全同标识（entity_id、friendly_name、state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time`），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。
+`sensor.guest_visit_count` 与旧版 Node-RED「来访客人」流同标识（state 与 9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` 完全一致），由集成直接生成；确认新实体正常后即可停用旧的 Node-RED 流。注意：全新安装时该实体 ID 会按名称生成为 `sensor.tplink_guard_guest_visit_count`，如需与旧流一致的 `sensor.guest_visit_count`，可在实体注册表中手动改名。
 
 两个 binary_sensor 的状态文字通过实体翻译显示为「发现陌生终端 / 无陌生终端」与「在线 / 离线」，避免默认「开启 / 关闭」的歧义。
 
