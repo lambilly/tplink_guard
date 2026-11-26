@@ -118,6 +118,13 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if unknown:
             _LOGGER.debug("Unknown online devices: %s", [d["ip"] for d in unknown])
 
+        # Monitored terminals: terminals that own a device_tracker entity.
+        monitored_macs = {item.get("mac") for item in self.monitored if item.get("mac")}
+        monitored_online_count = sum(
+            1 for device in devices if device.get("mac") in monitored_macs
+        )
+        monitored_offline_count = max(len(monitored_macs) - monitored_online_count, 0)
+
         static_devices: list[dict[str, Any]] = []
         try:
             static_rows = await self.client.async_get_static_assignments()
@@ -167,6 +174,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "phone_online_count": len(phone_online),
             "phone_offline_count": max(phone_offline, 0),
             "phone_online": phone_online,
+            "monitored_count": len(monitored_macs),
+            "monitored_online_count": monitored_online_count,
+            "monitored_offline_count": monitored_offline_count,
             ATTR_WATCHLIST: watchlist_devices,
             "static_count": len(static_devices),
             "static_enabled_count": static_enabled,

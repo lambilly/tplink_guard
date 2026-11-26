@@ -34,6 +34,9 @@ OBJECT_IDS: dict[str, str] = {
     "watched_online_count": "phone_online_count",
     "watched_offline_count": "phone_offline_count",
     "watched_ips": "phone_online_ip",
+    "monitored_online_count": "monitored_online_count",
+    "monitored_offline_count": "monitored_offline_count",
+    "monitored_count": "monitored_terminal_count",
     # Guest visit sensor keeps the legacy Node-RED identifier:
     # entity_id is sensor.guest_visit_count (no tplink_guard prefix).
     "guest_visit": "guest_visit_count",
@@ -83,6 +86,21 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         key="guest_visit",
         name="Guest Visit Count",
         icon="mdi:account-arrow-left-outline",
+    ),
+    SensorEntityDescription(
+        key="monitored_online_count",
+        name="Monitored Online Count",
+        icon="mdi:monitor-check",
+    ),
+    SensorEntityDescription(
+        key="monitored_offline_count",
+        name="Monitored Offline Count",
+        icon="mdi:monitor-off",
+    ),
+    SensorEntityDescription(
+        key="monitored_count",
+        name="Monitored Terminal Count",
+        icon="mdi:monitor-multiple",
     ),
 )
 

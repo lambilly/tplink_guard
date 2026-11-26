@@ -59,6 +59,9 @@
 | `sensor.tplink_guard_phone_offline_count` | Phone Offline Count | 手机名单终端离线数 |
 | `sensor.tplink_guard_phone_online_ip` | Phone Online IP | 手机名单在线 IP 列表 |
 | `sensor.guest_visit_count` | Guest Visit Count | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
+| `sensor.tplink_guard_monitored_online_count` | Monitored Online Count | 监控终端名单在线数 |
+| `sensor.tplink_guard_monitored_offline_count` | Monitored Offline Count | 监控终端名单离线数 |
+| `sensor.tplink_guard_monitored_terminal_count` | Monitored Terminal Count | 监控终端名单总台数 |
 | `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
 | `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
 | `device_tracker.<自定义ID>` | <自定义中文名> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
