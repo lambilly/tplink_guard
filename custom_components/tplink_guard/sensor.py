@@ -46,6 +46,7 @@ OBJECT_IDS: dict[str, str] = {
     # Guest visit sensor follows HA's natural prefixed id:
     # sensor.tplink_guard_guest_visit_count.
     "guest_visit": "guest_visit_count",
+    "router_model": "router_model",
 }
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
@@ -107,6 +108,11 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         key="monitored_count",
         name="Monitored Terminal Count",
         icon="mdi:monitor-multiple",
+    ),
+    SensorEntityDescription(
+        key="router_model",
+        name="Router Model",
+        icon="mdi:chip",
     ),
 )
 
@@ -236,6 +242,7 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        self._entry_id = entry_id
         self._attr_unique_id = f"{entry_id}_{description.key}"
         # No "tplink_guard_" prefix: without a suggested id HA 2026.11
         # prepends the device name ("TPLink Guard") to the generated id.
@@ -252,6 +259,19 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             self._attr_has_entity_name = False
             self._attr_name = description.name
             self._attr_native_unit_of_measurement = "人"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Device card info, enriched with the router model when known."""
+        info = DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name="TPLink Guard",
+            manufacturer="TP-Link",
+        )
+        data = self.coordinator.data or {}
+        if data.get("router_model") and data["router_model"] != "unknown":
+            info["model"] = str(data["router_model"])
+        return info
 
     @property
     def native_value(self) -> Any:
@@ -276,6 +296,14 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
+        if self.entity_description.key == "router_model":
+            info = data.get("router_info") or {}
+            return {
+                "hardware_version": info.get("hardware_version", ""),
+                "firmware_version": info.get("firmware_version", ""),
+                "router_mac": info.get("mac", ""),
+                ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
+            }
         if self.entity_description.key == "guest_visit":
             return guest_stats(data)
         if self.entity_description.key == "unknown_ips":

@@ -63,6 +63,7 @@
 | `sensor.tplink_guard_monitored_online_count` | Monitored Online Count | 监控终端名单在线数 |
 | `sensor.tplink_guard_monitored_offline_count` | Monitored Offline Count | 监控终端名单离线数 |
 | `sensor.tplink_guard_monitored_terminal_count` | Monitored Terminal Count | 监控终端名单总台数 |
+| `sensor.tplink_guard_router_model` | Router Model | 路由器型号（如 TL-R498GPM-AC 3.0，属性含硬件/固件版本、路由器 MAC） |
 | `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
 | `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
 | `device_tracker.<实体ID>` | <实体ID> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |

@@ -113,6 +113,23 @@ def _extract_static(data: Any) -> list[dict[str, Any]]:
     return _extract_rows(data, (("ip", "ipaddr"), ("mac", "macaddr")))
 
 
+def _find_dict_with_key(node: Any, key: str) -> dict[str, Any] | None:
+    """Find the first dict containing ``key`` anywhere in a JSON-like tree."""
+    if isinstance(node, dict):
+        if key in node:
+            return node
+        for value in node.values():
+            found = _find_dict_with_key(value, key)
+            if found:
+                return found
+    elif isinstance(node, list):
+        for item in node:
+            found = _find_dict_with_key(item, key)
+            if found:
+                return found
+    return None
+
+
 class RouterClient:
     """Small client for the router's local SLP JSON API."""
 
@@ -207,6 +224,23 @@ class RouterClient:
         ]
         _LOGGER.debug("host_info rows: %s", len(hosts))
         return hosts
+
+    async def async_get_device_info(self) -> dict[str, Any]:
+        """Return the router's model / hardware / firmware info."""
+        data = await self._async_query(
+            {"system": {"name": "device_info"}, "method": "get"}
+        )
+        info = _find_dict_with_key(data, "model") or {}
+        return {
+            "model": str(info.get("model") or ""),
+            "hardware_version": str(info.get("hardware_version") or ""),
+            "firmware_version": str(
+                info.get("firmware_version")
+                or info.get("fw_version")
+                or ""
+            ),
+            "mac": str(info.get("mac") or ""),
+        }
 
     async def async_get_static_assignments(self) -> list[dict[str, Any]]:
         """Return the router's static DHCP assignment list."""

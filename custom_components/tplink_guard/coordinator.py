@@ -54,6 +54,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.monitored: list[dict[str, str]] = load_monitored(monitored_path)
         self._monitored_mtime = whitelist_mtime(monitored_path)
         self.devices: dict[str, dict[str, Any]] = {}
+        # Fetched once on the first successful refresh; the model never
+        # changes until a reboot with different firmware.
+        self.router_info: dict[str, Any] | None = None
 
     async def async_reload_whitelist(self) -> None:
         """Re-read both lists and refresh all entity states."""
@@ -96,6 +99,14 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 raise UpdateFailed(f"Router authentication failed: {err}") from err
         except RouterConnectionError as err:
             raise UpdateFailed(f"Cannot reach router: {err}") from err
+
+        # Router model / hardware / firmware — one-time fetch, non-fatal.
+        if self.router_info is None:
+            try:
+                self.router_info = await self.client.async_get_device_info()
+            except (RouterAuthError, RouterConnectionError) as err:
+                _LOGGER.debug("Router device info unavailable: %s", err)
+                self.router_info = {}
 
         devices: list[dict[str, Any]] = []
         for host in hosts:
@@ -164,8 +175,20 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 }
             )
 
+        router_info = self.router_info or {}
+        router_model = " ".join(
+            part
+            for part in (
+                str(router_info.get("model") or ""),
+                str(router_info.get("hardware_version") or ""),
+            )
+            if part
+        )
+
         return {
             "devices": devices,
+            "router_model": router_model or "unknown",
+            "router_info": router_info,
             "online_count": len(devices),
             "known_count": len(devices) - len(unknown),
             "unknown_count": len(unknown),
