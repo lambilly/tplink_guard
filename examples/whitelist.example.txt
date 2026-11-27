@@ -1,8 +1,8 @@
-# TPLink Guard 白名单：每行格式 MAC, IP, #名称
+# TPLink Guard 白名单：每行格式 MAC, IP, 名称
 # 不在表中的终端一律视为陌生；IP 字段可选，用于按 IP 匹配
 # 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
-94-83-C4-53-EC-0C, 192.168.1.2, #iStoreOS
-20-BD-1D-D7-85-57, 192.168.1.10, #台式机
-4C-C6-4C-EC-0C-3B, 192.168.1.6, #网关
-AA-BB-CC-DD-EE-01, , #家人手机-张三
-AA-BB-CC-DD-EE-02, , #家人手机-李四
+94-83-C4-53-EC-0C, 192.168.1.2, iStoreOS
+20-BD-1D-D7-85-57, 192.168.1.10, 台式机
+4C-C6-4C-EC-0C-3B, 192.168.1.6, 网关
+AA-BB-CC-DD-EE-01,, 家人手机-张三
+AA-BB-CC-DD-EE-02,, 家人手机-李四

@@ -120,31 +120,38 @@ def _parse_whitelist_note(comment: str) -> tuple[str, str]:
 def _read_plain(path: Path) -> Whitelist:
     result = Whitelist()
     for line in path.read_text(encoding="utf-8-sig").splitlines():
-        # New format: ``MAC, IP, #名称`` — the IP sits before ``#``.
-        # Legacy format: ``MAC # 名称,IP`` — IP extracted from the comment.
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        # Current format: ``MAC, IP, 名称`` (whitelist) or
+        # ``MAC, IP, 姓名, 昵称`` (guestphone) — no ``#`` at all.
+        # Legacy formats: ``MAC, IP, #名称`` and ``MAC # 名称,IP``.
         if "#" in line:
             value, comment = line.split("#", 1)
             value = value.strip()
             comment = comment.strip()
         else:
-            value = line.strip()
+            value = stripped
             comment = ""
         if not value:
             continue
 
+        fields = [field.strip() for field in value.split(",")]
+        mac_value = fields[0] if fields else ""
         ip = ""
-        mac_value = value
-        # Split the pre-# part into MAC, IP columns when present.
-        value_fields = [field.strip() for field in value.split(",")]
-        if len(value_fields) >= 2 and value_fields[0]:
-            mac_value = value_fields[0]
-            if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", value_fields[1]):
-                ip = value_fields[1]
+        if len(fields) >= 2 and re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", fields[1]):
+            ip = fields[1]
+
+        # Names live in the trailing columns of the current format; legacy
+        # notes keep them after ``#``. Empty IP columns (``MAC,,名称``) are
+        # preserved by splitting without dropping empty fields.
+        note = comment or (",".join(fields[2:]) if len(fields) >= 3 else "")
 
         if re.fullmatch(r"[0-9a-fA-F:-]{12,17}", mac_value):
             mac = normalize_mac(mac_value)
             if len(mac) == 12:
-                name, legacy_ip = _parse_whitelist_note(comment)
+                name, legacy_ip = _parse_whitelist_note(note)
                 ip = ip or legacy_ip
                 if ip:
                     result.ips.add(ip)
@@ -154,9 +161,9 @@ def _read_plain(path: Path) -> Whitelist:
                     "ip": ip,
                     "hostname": name,
                     "vendor": "",
-                    # Keep the full comma-separated note so watchlist
-                    # entries can be split into name/nickname/device.
-                    "note": comment,
+                    # Keep the comma-separated name/nickname/device note so
+                    # watchlist entries can be split by split_watch_note().
+                    "note": note,
                 }
         elif re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", mac_value):
             result.ips.add(mac_value)
