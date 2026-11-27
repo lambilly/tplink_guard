@@ -420,6 +420,23 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             1 for device in devices if device.get("mac") in monitored_macs
         )
         monitored_offline_count = max(len(monitored_macs) - monitored_online_count, 0)
+        # Detail rows for the merged Monitored Online Count entity: the
+        # secondary count entities become attributes instead of entities.
+        monitored_devices: list[dict[str, Any]] = []
+        for item in self.monitored:
+            mac = str(item.get("mac") or "")
+            matched = next((device for device in devices if device.get("mac") == mac), None)
+            monitored_devices.append(
+                {
+                    "mac": mac,
+                    "entity_id": str(item.get("entity_id") or ""),
+                    "name": str(item.get("name") or item.get("entity_id") or mac),
+                    "ip": str(matched.get("ip") or "") if matched else "",
+                    "hostname": str(matched.get("hostname") or "") if matched else "",
+                    "state": "online" if matched else "offline",
+                    "online": matched is not None,
+                }
+            )
 
         static_devices: list[dict[str, Any]] = []
         try:
@@ -488,6 +505,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "monitored_count": len(monitored_macs),
             "monitored_online_count": monitored_online_count,
             "monitored_offline_count": monitored_offline_count,
+            "monitored_devices": monitored_devices,
             ATTR_WATCHLIST: watchlist_devices,
             "static_count": len(static_devices),
             "static_enabled_count": static_enabled,
