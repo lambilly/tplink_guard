@@ -53,17 +53,14 @@
 
 ## 实体
 
-实体名称与 ID 全部使用英文，术语统一为 `terminal` / `phone` / `monitored`。
+实体名称与 ID 全部使用英文，术语统一为 `terminal` / `phone` / `device`。
 
 | 实体 ID | 英文名 | 含义 |
 |---|---|---|
-| `sensor.tplink_guard_online_terminal_count` | Online Terminal Count | 当前在线终端数 |
-| `sensor.tplink_guard_whitelist_online_count` | Whitelist Online Count | 白名单内在线数；白名单总数 / 离线数作为属性 `whitelist_terminal_count` / `whitelist_offline_count` 提供 |
-| `sensor.tplink_guard_unknown_terminal_count` | Unknown Terminal Count | 陌生在线终端数；IP 列表作为属性 `unknown_terminal_ip` 提供 |
-| `sensor.tplink_guard_static_ip_count` | Static IP Count | 静态分配终端数（属性含启用数与固件上限 80） |
+| `sensor.tplink_guard_online_all_count` | Online All Count | 当前在线终端总数；白名单 / 静态分配 / 陌生终端三组数据作为属性挂在此实体上：`whitelist_*`（总数、在线数、离线数与三组列表）、`static_ip_count / static_ip_enabled / static_ip_limit`、`unknown_online_count / unknown_ip_list` |
 | `sensor.tplink_guard_phone_online_count` | Phone Online Count | 手机名单终端在线数；离线数与列表作为属性 `phone_offline_count` / `phone_all_list` / `phone_online_list` / `phone_offline_list` 提供 |
 | `sensor.tplink_guard_guest_visit_count` | Guest Visit Count | 来访统计（state=在家人数，单位「人」，含 9 个 guest_* 属性） |
-| `sensor.tplink_guard_monitored_online_count` | Monitored Online Count | 监控终端名单在线数；总数 / 离线数与列表作为属性 `monitored_all_count` / `monitored_offline_count` / `monitored_all_list` / `monitored_online_list` / `monitored_offline_list` 提供 |
+| `sensor.tplink_guard_device_online_count` | Device Online Count | 监控终端名单在线数；总数 / 离线数与列表作为属性 `device_all_count` / `device_offline_count` / `device_all_list` / `device_online_list` / `device_offline_list` 提供 |
 | `sensor.tplink_guard_router_model` | Router Model | 路由器型号（如 TL-R498GPM-AC 3.0，属性含硬件/固件版本、路由器 MAC） |
 | `sensor.tplink_guard_ap_online_count` | AP Online Count | 当前在线 AP 数；总数与离线数作为属性 `ap_all_count` / `ap_offline_count` 提供 |
 | `sensor.tplink_guard_gateway_online_count` | Gateway Online Count | 网关 / 蓝牙代理在线数（兼容旧 NR 实体的 7 个属性与单位「台」） |
@@ -72,7 +69,7 @@
 | `sensor.tplink_guard_router_online_count` | Router Online Count | 网络基础设施在线数（兼容旧 NR 实体的 7 个属性与单位「台」） |
 | `device_tracker.<实体ID>` | <实体ID> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
 
-Monitored / Phone / Unknown / Whitelist 四组与 AP、Gateway 一样按「每组一个 online count 实体」组织：原来的离线数、总数、IP 列表等实体已取消，计数与列表改为属性挂在主实体上。按需要精简后，这些实体只保留计数 / 列表类属性（以及 Phone 主实体的 `devices` 在线明细），不再输出 `devices` 数组、`watchlist`、`phone_detail`、`phone_count`、`phone_online_ip`、`monitored_devices`、`monitored_terminal_count` 等大体积属性；两个 binary_sensor 也已删除。
+所有分组按「每组一个 online count 实体」组织：原来的离线数、总数、IP 列表等实体已取消，计数与列表改为属性挂在主实体上。Whitelist / Static IP / Unknown 三组更进一步并入 `online_all_count`，不再单独生成实体。按需要精简后，这些实体只保留计数 / 列表类属性（以及 Phone 主实体的 `devices` 在线明细），不再输出 `devices` 数组、`watchlist`、`phone_detail`、`phone_count`、`phone_online_ip`、`monitored_devices`、`monitored_terminal_count` 等大体积属性；两个 binary_sensor 也已删除。
 
 > **升级说明**：HA 2026.11 强制按「集成名前缀 + 实体名」生成全新安装的实体 ID（`_attr_suggested_object_id` 被忽略），因此新安装的实体默认带 `tplink_guard_` 前缀。所有实体统一使用 `tplink_guard_` 前缀（Node-RED 流已按带前缀 ID 引用）。已注册的实体 ID 不会随版本自动改变；需要自定义 ID（如 `device_tracker.hp_imac`）可在「设置 → 设备与服务 → 实体」中改名，集成不会覆盖手动改名。
 
@@ -153,7 +150,7 @@ sensor.84469303d628_action, 蓝牙网关, lanya_gateway, ne:unavailable  # 实�
 
 手机终端请使用 `sensor.tplink_guard_phone_online_count`：state 为在线数，`devices` 属性是**当前在线**的关注终端数组（含 `mac / ip / hostname / display_name` 等），`phone_all_list / phone_online_list / phone_offline_list` 为姓名列表。完整关注名单（含离线）不再作为实体属性输出，`watchlist` / `phone_detail` / `phone_count` / `phone_online_ip` 已移除；如需在线 IP 可从 `devices` 中读取。
 
-陌生终端请使用 `sensor.tplink_guard_unknown_terminal_count`：state 为陌生在线终端数，`unknown_terminal_ip` 为 IP 字符串（多个以逗号分隔，无为 `none`）。两个 binary_sensor（`unknown_terminal_present`、`phone_online`）已删除，改用上述计数实体的 state 触发即可。
+陌生终端请使用 `sensor.tplink_guard_online_all_count` 的属性：`unknown_online_count` 为陌生在线终端数，`unknown_ip_list` 为 IP 字符串（多个以逗号分隔，无为 `none`）。两个 binary_sensor（`unknown_terminal_present`、`phone_online`）已删除，改用计数实体的对应属性触发即可。
 
 `examples/automations.yaml` 提供了陌生终端告警与关注终端上线提醒的示例。
 

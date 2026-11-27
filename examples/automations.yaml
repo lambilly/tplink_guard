@@ -7,24 +7,24 @@
   description: 在线终端不在白名单时推送通知
   mode: single
   trigger:
-    - platform: numeric_state
-      entity_id: sensor.tplink_guard_unknown_terminal_count
-      above: 0
+    - platform: template
+      value_template: >-
+        {{ state_attr('sensor.tplink_guard_online_all_count', 'unknown_online_count') | int(0) > 0 }}
   action:
     - service: persistent_notification.create
       data:
         notification_id: tplink_guard_unknown
         title: 主路由发现陌生终端
         message: >-
-          陌生终端 IP：{{ state_attr('sensor.tplink_guard_unknown_terminal_count', 'unknown_terminal_ip') }}
+          陌生终端 IP：{{ state_attr('sensor.tplink_guard_online_all_count', 'unknown_ip_list') }}
 
 - alias: 主路由陌生终端已离线
   description: 陌生终端全部离线后清除通知
   mode: single
   trigger:
-    - platform: numeric_state
-      entity_id: sensor.tplink_guard_unknown_terminal_count
-      below: 1
+    - platform: template
+      value_template: >-
+        {{ state_attr('sensor.tplink_guard_online_all_count', 'unknown_online_count') | int(0) == 0 }}
   action:
     - service: persistent_notification.dismiss
       data:

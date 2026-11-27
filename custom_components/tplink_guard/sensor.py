@@ -31,13 +31,11 @@ _LOGGER = logging.getLogger(__name__)
 
 # English object ids -> entity_id is <platform>.tplink_guard_<object_id>
 OBJECT_IDS: dict[str, str] = {
-    "online_count": "online_terminal_count",
+    "online_count": "online_all_count",
     # One entity per group: the other counts / IP lists are attributes.
-    "known_count": "whitelist_online_count",
-    "unknown_count": "unknown_terminal_count",
-    "static_count": "static_ip_count",
+    # Whitelist / static / unknown counts now live on online_all_count.
     "watched_online_count": "phone_online_count",
-    "monitored_online_count": "monitored_online_count",
+    "monitored_online_count": "device_online_count",
     # Guest visit sensor follows HA's natural prefixed id:
     # sensor.tplink_guard_guest_visit_count.
     "guest_visit": "guest_visit_count",
@@ -60,20 +58,7 @@ CHECKLIST_SENSORS: dict[str, tuple[str, str]] = {
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
-        key="online_count", name="Online Terminal Count", icon="mdi:router-network"
-    ),
-    SensorEntityDescription(
-        key="known_count", name="Whitelist Online Count", icon="mdi:check-network"
-    ),
-    SensorEntityDescription(
-        key="unknown_count",
-        name="Unknown Terminal Count",
-        icon="mdi:alert-circle-outline",
-    ),
-    SensorEntityDescription(
-        key="static_count",
-        name="Static IP Count",
-        icon="mdi:ip-network-outline",
+        key="online_count", name="Online All Count", icon="mdi:router-network"
     ),
     SensorEntityDescription(
         key="watched_online_count",
@@ -87,7 +72,7 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     ),
     SensorEntityDescription(
         key="monitored_online_count",
-        name="Monitored Online Count",
+        name="Device Online Count",
         icon="mdi:monitor-eye",
     ),
     SensorEntityDescription(
@@ -305,9 +290,8 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         data = self.coordinator.data or {}
         key = self.entity_description.key
 
-        # Four merged groups: only the online-count sensor remains, the
-        # former count/IP sensors are exposed as attributes with the same
-        # names so dashboards and automations lose no data.
+        # Device group (formerly "monitored"): one online-count sensor, the
+        # remaining figures are attributes with the same device_* prefix.
         if key == "monitored_online_count":
             devices = data.get("monitored_devices") or []
             names = [
@@ -320,12 +304,12 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 name for device, name in zip(devices, names) if not device.get("online")
             ]
             return {
-                "monitored_online_count": data.get("monitored_online_count"),
-                "monitored_offline_count": data.get("monitored_offline_count"),
-                "monitored_all_count": len(devices),
-                "monitored_all_list": "｜".join(names) or "无",
-                "monitored_online_list": "｜".join(online) or "无",
-                "monitored_offline_list": "｜".join(offline) or "无",
+                "device_online_count": data.get("monitored_online_count"),
+                "device_offline_count": data.get("monitored_offline_count"),
+                "device_all_count": len(devices),
+                "device_all_list": "｜".join(names) or "无",
+                "device_online_list": "｜".join(online) or "无",
+                "device_offline_list": "｜".join(offline) or "无",
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }
@@ -361,69 +345,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }
-        if key == "unknown_count":
-            devices = data.get("unknown_devices") or []
-            names = [
-                str(
-                    device.get("display_name")
-                    or device.get("hostname")
-                    or device.get("ip")
-                    or ""
-                )
-                for device in devices
-            ]
-            ips = [str(device.get("ip") or "") for device in devices if device.get("ip")]
-            return {
-                "unknown_terminal_count": data.get("unknown_count"),
-                "unknown_terminal_ip": ", ".join(ips) if ips else "none",
-                "unknown_all_count": len(devices),
-                "unknown_online_count": len(devices),
-                "unknown_offline_count": 0,
-                "unknown_all_list": "｜".join(names) or "无",
-                "unknown_online_list": "｜".join(names) or "无",
-                "unknown_offline_list": "无",
-                "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
-                ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
-            }
-        if key == "known_count":
-            online_devices = [
-                device for device in data.get("devices") or [] if device.get("known")
-            ]
-            total = int(data.get(ATTR_WHITELIST_COUNT) or 0)
-            online_count = int(data.get("known_count") or 0)
-            entries = getattr(getattr(self.coordinator, "whitelist", None), "entries", {}) or {}
-            all_names = [
-                str(entry.get("hostname") or entry.get("note") or "").split(",")[0].strip()
-                for entry in entries.values()
-            ]
-            online_names = [
-                str(
-                    device.get("display_name")
-                    or device.get("hostname")
-                    or device.get("mac")
-                    or ""
-                )
-                for device in online_devices
-            ]
-            online_macs = {str(device.get("mac") or "") for device in online_devices}
-            offline_names = [
-                str(entry.get("hostname") or entry.get("note") or "").split(",")[0].strip()
-                for mac, entry in entries.items()
-                if str(mac) not in online_macs
-            ]
-            return {
-                ATTR_WHITELIST_COUNT: total,
-                "whitelist_terminal_count": total,
-                "whitelist_online_count": online_count,
-                "whitelist_offline_count": max(total - online_count, 0),
-                "whitelist_all_count": total,
-                "whitelist_all_list": "｜".join(name for name in all_names if name) or "无",
-                "whitelist_online_list": "｜".join(online_names) or "无",
-                "whitelist_offline_list": "｜".join(name for name in offline_names if name) or "无",
-                "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
-                ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
-            }
-
         if key == "ap_online_count":
             # Legacy Node-RED produced sensor.ap_online_count with these
             # attributes; keep them identical so dashboards can switch
@@ -479,11 +400,80 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         if key == "guest_visit":
             return guest_stats(data)
         if key == "online_count":
-            return {ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE)}
-        if key == "static_count":
-            return {
-                "enabled": data.get("static_enabled_count"),
-                "limit": 80,
-                ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
-            }
+            # Online All Count is the single home for the terminal overview:
+            # the former Whitelist / Static IP / Unknown Terminal Count
+            # sensors became attributes so one entity covers the whole picture.
+            attrs: dict[str, Any] = {ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE)}
+
+            # Whitelist group (formerly Whitelist Online Count).
+            whitelist_devices = [
+                device for device in data.get("devices") or [] if device.get("known")
+            ]
+            total = int(data.get(ATTR_WHITELIST_COUNT) or 0)
+            online_count = int(data.get("known_count") or 0)
+            entries = (
+                getattr(getattr(self.coordinator, "whitelist", None), "entries", {}) or {}
+            )
+            all_names = [
+                str(entry.get("hostname") or entry.get("note") or "")
+                .split(",")[0]
+                .strip()
+                for entry in entries.values()
+            ]
+            online_names = [
+                str(
+                    device.get("display_name")
+                    or device.get("hostname")
+                    or device.get("mac")
+                    or ""
+                )
+                for device in whitelist_devices
+            ]
+            online_macs = {str(device.get("mac") or "") for device in whitelist_devices}
+            offline_names = [
+                str(entry.get("hostname") or entry.get("note") or "")
+                .split(",")[0]
+                .strip()
+                for mac, entry in entries.items()
+                if str(mac) not in online_macs
+            ]
+            attrs[ATTR_WHITELIST_COUNT] = total
+            attrs.update(
+                {
+                    "whitelist_terminal_count": total,
+                    "whitelist_online_count": online_count,
+                    "whitelist_offline_count": max(total - online_count, 0),
+                    "whitelist_all_count": total,
+                    "whitelist_all_list": "｜".join(n for n in all_names if n) or "无",
+                    "whitelist_online_list": "｜".join(online_names) or "无",
+                    "whitelist_offline_list": "｜".join(n for n in offline_names if n)
+                    or "无",
+                }
+            )
+
+            # Static IP group (formerly Static IP Count).
+            attrs.update(
+                {
+                    "static_ip_count": data.get("static_count"),
+                    "static_ip_enabled": data.get("static_enabled_count"),
+                    "static_ip_limit": 80,
+                }
+            )
+
+            # Unknown terminal group (formerly Unknown Terminal Count):
+            # renamed to unknown_online_count, with its IP list alongside.
+            unknown_devices = data.get("unknown_devices") or []
+            unknown_ips = [
+                str(device.get("ip") or "")
+                for device in unknown_devices
+                if device.get("ip")
+            ]
+            attrs.update(
+                {
+                    "unknown_online_count": data.get("unknown_count"),
+                    "unknown_ip_list": ", ".join(unknown_ips) if unknown_ips else "none",
+                }
+            )
+            attrs["update_time"] = _format_time(data.get(ATTR_LAST_UPDATE))
+            return attrs
         return {}
