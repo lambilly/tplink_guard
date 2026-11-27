@@ -57,7 +57,7 @@
 
 | 实体 ID | 英文名 | 含义 |
 |---|---|---|
-| `sensor.tplink_guard_online_all_count` | Online All Count | 当前在线终端总数；白名单 / 静态分配 / 陌生终端三组数据作为属性挂在此实体上：`whitelist_*`（总数、在线数、离线数与三组列表）、`static_ip_count / static_ip_enabled / static_ip_limit`、`unknown_online_count / unknown_ip_list` |
+| `sensor.tplink_guard_online_all_count` | Online All Count | 当前在线终端总数；白名单 / 静态分配 / 陌生终端三组数据作为属性挂在此实体上：`whitelist_*`（总数、在线数、离线数与三组列表）、`static_ip_count / static_ip_enabled / static_ip_limit`、`unknown_online_count / unknown_online_list` |
 | `sensor.tplink_guard_guest_visit_count` | Guest Visit Count | 客人来访统计：state = 在家人数（单位「人」），手机名单的在线 / 离线统计已并入此实体，9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` |
 | `sensor.tplink_guard_device_online_count` | Device Online Count | 设备终端名单在线数；总数 / 离线数与列表作为属性 `device_all_count` / `device_offline_count` / `device_all_list` / `device_online_list` / `device_offline_list` 提供 |
 | `sensor.tplink_guard_firmware_model` | Firmware Model | 路由设备型号（如 TL-R498GPM-AC 3.0，属性含硬件 / 固件版本、设备 MAC）；内部数据键仍为 `router_model`，实体 ID 与名称已改为 Firmware Model |
@@ -145,7 +145,7 @@ AP 名单示例（字段：`IP,名称`）：
 
 客人手机终端请使用 `sensor.tplink_guard_guest_visit_count`：state 为在家人数，`guest_all_list / guest_home_list / guest_out_list` 分别是全部 / 在家 / 外出的姓名列表，`guest_nick_list` 为在家人员昵称列表，`guest_detail` 为来访文字说明。原手机在线数实体及其 `phone_*` 属性已删除，统计项均可在该实体读取。
 
-陌生终端请使用 `sensor.tplink_guard_online_all_count` 的属性：`unknown_online_count` 为陌生在线终端数，`unknown_ip_list` 为 IP 字符串（多个以逗号分隔，无为 `none`）。两个 binary_sensor（`unknown_terminal_present`、`phone_online`）已删除，改用计数实体的对应属性触发即可。
+陌生终端请使用 `sensor.tplink_guard_online_all_count` 的属性：`unknown_online_count` 为陌生在线终端数，`unknown_online_list` 为这些在线陌生终端的 IP 字符串（多个以逗号分隔，无为 `none`）。两个 binary_sensor（`unknown_terminal_present`、`phone_online`）已删除，改用计数实体的对应属性触发即可。
 
 `examples/automations.yaml` 提供了陌生终端告警与关注终端上线提醒的示例。
 

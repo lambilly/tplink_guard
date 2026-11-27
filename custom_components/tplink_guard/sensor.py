@@ -429,7 +429,7 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             attrs.update(
                 {
                     "unknown_online_count": data.get("unknown_count"),
-                    "unknown_ip_list": ", ".join(unknown_ips) if unknown_ips else "none",
+                    "unknown_online_list": ", ".join(unknown_ips) if unknown_ips else "none",
                 }
             )
             attrs["update_time"] = _format_time(data.get(ATTR_LAST_UPDATE))
