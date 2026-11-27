@@ -30,9 +30,9 @@ _LOGGER = logging.getLogger(__name__)
 
 # English object ids -> entity_id is <platform>.tplink_guard_<object_id>
 OBJECT_IDS: dict[str, str] = {
-    "online_count": "online_all_count",
+    "online_count": "all_online_count",
     # One entity per group: the other counts / IP lists are attributes.
-    # Whitelist / static / unknown counts now live on online_all_count.
+    # Whitelist / static / unknown counts now live on all_online_count.
     "monitored_online_count": "device_online_count",
     # Guest visit sensor follows HA's natural prefixed id:
     # sensor.tplink_guard_guest_visit_count.
@@ -56,7 +56,7 @@ CHECKLIST_SENSORS: dict[str, tuple[str, str]] = {
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
-        key="online_count", name="Online All Count", icon="mdi:router-network"
+        key="online_count", name="All Online Count", icon="mdi:router-network"
     ),
     SensorEntityDescription(
         key="guest_visit",
@@ -360,7 +360,7 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         if key == "guest_visit":
             return guest_stats(data)
         if key == "online_count":
-            # Online All Count is the single home for the terminal overview:
+            # All Online Count is the single home for the terminal overview:
             # the former Whitelist / Static IP / Unknown Terminal Count
             # sensors became attributes so one entity covers the whole picture.
             attrs: dict[str, Any] = {ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE)}
