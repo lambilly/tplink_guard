@@ -14,10 +14,10 @@
 - 刷新周期可配置（默认 60 秒，最小 5 秒）
 - 读取 `host_management/host_info` 在线终端表；另读取 `dhcpd/dhcp_static` 统计静态分配数
 - **白名单 TXT**：每行格式 `MAC, IP, #名称`，IP 字段可选（动态 / 无 IP 留空），`#` 后为设备名称；不使用引号
-- **客人手机名单 TXT**（`lists/guestphone.txt`，原手机名单 / 关注名单）：格式为 `MAC # 姓名,昵称,设备名`，但只有同时存在于白名单中的设备才算客人手机终端
-- 名单备注字段为 `姓名,昵称,设备名`，解析后用于来访统计的在家 / 外出列表显示；统计并入 `guest_visit_count`，不再单独生成手机在线数实体
+- **客人手机名单 TXT**（`lists/guestphone.txt`，原手机名单 / 关注名单）：格式为 `MAC, IP, #姓名,昵称`，但只有同时存在于白名单中的设备才算客人手机终端
+- 名称字段为 `姓名,昵称`（第 3、4 字段），解析后用于来访统计的在家 / 外出列表显示；统计并入 `guest_visit_count`，不再单独生成手机在线数实体
 - **设备终端名单 TXT**（`lists/device.txt`）：每行 `MAC,IP,显示名,实体名`，第二列 IP 预留暂空（`MAC,,显示名,实体名`），第三字段为中文显示名，第四字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`）
-- **AP 名单 TXT**（`lists/ap.txt`）：每行 `IP,名称`，直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），生成 AP Online Count 一个实体，总数 / 离线数以属性提供
+- **AP 名单 TXT**（`lists/ap.txt`）：每行 `MAC, IP, 名称`，第 2 列 IP 直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），第 3 列名称用于各 `*_list` 属性显示；IP 为空（`MAC,,名称`）的行会跳过。生成 AP Online Count 一个实体，总数 / 离线数以属性提供
 - **分组在线名单 TXT**（`lists/gateway.txt` / `lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：统一格式 `MAC,IP,中文名,英文名`，IP 动态或为空时用 `,,` 跳过（如 `MAC,,中文名,英文名`）。MAC 比对 TPLINK 在线终端表，IP 额外做 LAN 探测（任一命中即在线，可修正路由器把在线设备误标 offline）。分别生成 Gateway / ASR / Server / Router Online Count，增删终端只改对应 TXT 一行，文件变化自动重载；不依赖任何 HA 实体状态或 `iphonedetect` 的 device_tracker
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
@@ -78,7 +78,7 @@
 
 ## 名单格式（无引号，逗号区隔）
 
-白名单格式为 `MAC, IP, #名称`（IP 可选），客人手机名单格式为 `MAC # 姓名,昵称,设备名`；字段用逗号区隔，IP 不加括号。
+白名单格式为 `MAC, IP, #名称`（IP 可选），客人手机名单格式为 `MAC, IP, #姓名,昵称`；字段用逗号区隔，IP 不加括号。第 2 列均为 IP，名称取后续字段，空 IP 用 `,,` 留空。
 
 白名单示例（格式 `MAC, IP, #名称`，IP 可选）：
 
@@ -89,10 +89,10 @@
 AA-BB-CC-DD-EE-01, , #只写名称也可以
 ```
 
-客人手机名单示例（字段：姓名,昵称,设备名）：
+客人手机名单示例（字段：MAC, IP, #姓名,昵称）：
 
 ```
-AA-BB-CC-DD-EE-01 # 张三,三哥,Phone-A
+AA-BB-CC-DD-EE-01, 192.168.1.140, #张三,三哥
 ```
 
 不在白名单中的设备即使写入客人手机名单也不会生效。名单改完会自动重载，无需重启 HA。
@@ -110,12 +110,12 @@ AA-BB-CC-DD-EE-01,, 设备A, dev_a
 - 省略 `实体名` 时按路由器主机名自动生成
 - 名单内每台终端生成一个 `device_tracker` 实体：在线为 `home`，离线为 `not_home`，状态未变化时持续时间计时不会重置，属性含 `mac / ip / hostname / last_update`
 
-AP 名单示例（字段：`IP,名称`）：
+AP 名单示例（字段：`MAC, IP, 名称`）：
 
 ```
-192.168.1.11, 客厅AP
-192.168.1.12, 主卧AP
-192.168.1.13, 次卧AP
+24-5A-5F-E8-81-49, 192.168.1.11, 客厅AP
+EC-60-73-35-89-E7, 192.168.1.12, 主卧AP
+3C-6A-48-73-DB-B0, 192.168.1.13, 次卧AP
 ```
 
 - AP 由路由器 AC 管理，不会出现在 `host_info` 在线终端表里，因此集成直接对名单中的 IP 做在线探测（先 ICMP，失败时尝试 TCP 80/443/22）

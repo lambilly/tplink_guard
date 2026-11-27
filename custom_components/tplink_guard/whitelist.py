@@ -266,7 +266,10 @@ def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
 def load_aps(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     """Load the AP list.
 
-    Each line is ``IP, name`` (name optional; ``#`` starts a comment).
+    New format is ``MAC, IP, 名称``: the probe target is the IP (column 2)
+    and the display name is column 3. An empty IP column (``MAC,,名称``)
+    is skipped. The legacy ``IP, 名称`` form is still accepted.
+
     APs are probed directly over the LAN because AC-managed APs never
     appear in the router's host_info table.
     """
@@ -287,18 +290,26 @@ def load_aps(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
         body = line.split("#", 1)[0].strip()
         if not body:
             continue
-        if "," in body:
-            parts = [part.strip() for part in body.split(",", 1)]
+        parts = [part.strip() for part in body.split(",")]
+        # New 3-column form: MAC, IP, 名称 — probe IP is column 2, name is 3.
+        # Legacy 2-column form: IP, 名称 — probe IP is column 1, name is 2.
+        first = parts[0] if parts else ""
+        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", first):
+            ip = first
+            name = parts[1] if len(parts) > 1 else ""
+        elif len(parts) >= 2 and re.fullmatch(
+            r"\d{1,3}(?:\.\d{1,3}){3}", parts[1]
+        ):
+            ip = parts[1]
+            name = parts[2] if len(parts) > 2 else ""
         else:
-            parts = body.split(None, 1)
-        ip = parts[0].strip() if parts else ""
-        if not re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", ip) or ip in seen:
-            _LOGGER.debug("Skipping invalid AP line: %s", line)
+            # Empty IP column (MAC,,name) or invalid row: skip entirely.
+            _LOGGER.debug("Skipping invalid/empty-IP AP line: %s", line)
+            continue
+        if not ip or ip in seen:
             continue
         seen.add(ip)
-        result.append(
-            {"ip": ip, "name": parts[1].strip() if len(parts) > 1 else ip}
-        )
+        result.append({"ip": ip, "name": name or ip})
     return result
 
 

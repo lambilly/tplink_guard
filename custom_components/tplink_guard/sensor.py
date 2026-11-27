@@ -289,20 +289,24 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         # remaining figures are attributes with the same device_* prefix.
         if key == "monitored_online_count":
             devices = data.get("monitored_devices") or []
-            names = [
-                str(device.get("name") or device.get("mac") or "") for device in devices
-            ]
+            # Name is always the 3rd list column; never fall back to IP/MAC,
+            # and skip empty names so the *_list attributes show names only.
+            names = [str(device.get("name") or "").strip() for device in devices]
             online = [
-                name for device, name in zip(devices, names) if device.get("online")
+                name
+                for device, name in zip(devices, names)
+                if device.get("online") and name
             ]
             offline = [
-                name for device, name in zip(devices, names) if not device.get("online")
+                name
+                for device, name in zip(devices, names)
+                if not device.get("online") and name
             ]
             return {
                 "device_online_count": data.get("monitored_online_count"),
                 "device_offline_count": data.get("monitored_offline_count"),
                 "device_all_count": len(devices),
-                "device_all_list": "｜".join(names) or "无",
+                "device_all_list": "｜".join(n for n in names if n) or "无",
                 "device_online_list": "｜".join(online) or "无",
                 "device_offline_list": "｜".join(offline) or "无",
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
@@ -313,12 +317,17 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             # attributes; keep them identical so dashboards can switch
             # entity ids without changing any template logic.
             aps = data.get("ap_devices") or []
-            names = [str(ap.get("name") or ap.get("ip") or "") for ap in aps]
-            online = [name for ap, name in zip(aps, names) if ap.get("online")]
-            offline = [name for ap, name in zip(aps, names) if not ap.get("online")]
+            # AP name is the 3rd list column; never show the IP as a name.
+            names = [str(ap.get("name") or "").strip() for ap in aps]
+            online = [
+                name for ap, name in zip(aps, names) if ap.get("online") and name
+            ]
+            offline = [
+                name for ap, name in zip(aps, names) if not ap.get("online") and name
+            ]
             return {
                 "ap_all_count": len(aps),
-                "ap_all_list": "｜".join(names) or "无",
+                "ap_all_list": "｜".join(n for n in names if n) or "无",
                 "ap_online_count": len(online),
                 "ap_online_list": "｜".join(online) or "无",
                 "ap_offline_count": len(offline),
@@ -332,19 +341,22 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             # gateway / asr / server / router all share the same shape.
             group = checklist[0]
             devices = data.get(f"{group}_devices") or []
-            names = [
-                str(device.get("name") or device.get("entity_id") or "")
-                for device in devices
-            ]
+            # Name is the 3rd list column (name_cn); never fall back to the
+            # entity id / IP, and skip empty names.
+            names = [str(device.get("name") or "").strip() for device in devices]
             online = [
-                name for device, name in zip(devices, names) if device.get("online")
+                name
+                for device, name in zip(devices, names)
+                if device.get("online") and name
             ]
             offline = [
-                name for device, name in zip(devices, names) if not device.get("online")
+                name
+                for device, name in zip(devices, names)
+                if not device.get("online") and name
             ]
             return {
                 f"{group}_all_count": len(devices),
-                f"{group}_all_list": "｜".join(names) or "无",
+                f"{group}_all_list": "｜".join(n for n in names if n) or "无",
                 f"{group}_online_count": len(online),
                 f"{group}_online_list": "｜".join(online) or "无",
                 f"{group}_offline_count": len(offline),

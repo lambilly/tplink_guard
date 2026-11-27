@@ -1,5 +1,5 @@
-# TPLink Guard 客人手机名单：每行格式 MAC # 姓名,昵称,设备名
-# 只有同时在白名单中的 MAC 才算客人手机终端
+# TPLink Guard 客人手机名单：每行格式 MAC, IP, #姓名,昵称
+# 第2列 IP、第3/4列姓名与昵称；只有同时在白名单中的 MAC 才算客人手机终端
 # 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
-AA-BB-CC-DD-EE-01 # 张三,三哥,Phone-A
-AA-BB-CC-DD-EE-02 # 李四,小李,Phone-B
+AA-BB-CC-DD-EE-01, 192.168.1.140, #张三,三哥
+AA-BB-CC-DD-EE-02, 192.168.1.141, #李四,小李
