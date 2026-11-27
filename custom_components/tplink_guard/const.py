@@ -25,6 +25,12 @@ DEFAULT_LISTS_RELDIR = "custom_components/tplink_guard/lists"
 DEFAULT_MATCH_BY = "both"
 DEFAULT_TIMEOUT = 10
 
+# Minutes to stop polling after another client (e.g. a browser logged into
+# the router's web UI) takes over the single local admin session. The
+# router allows one active web session per account, so polling and a
+# human user keep kicking each other; the yield lets the human work.
+SESSION_YIELD_MINUTES = 5
+
 MATCH_MODES = ["mac", "ip", "both"]
 
 # TP-Link SLP password encoding, extracted from web-static/js/su/su.js

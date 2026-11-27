@@ -10,7 +10,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import RouterAuthError, RouterClient, RouterConnectionError
-from .const import ATTR_LAST_UPDATE, ATTR_WATCHLIST, ATTR_WHITELIST_COUNT, DOMAIN
+from .const import (
+    ATTR_LAST_UPDATE,
+    ATTR_WATCHLIST,
+    ATTR_WHITELIST_COUNT,
+    DOMAIN,
+    SESSION_YIELD_MINUTES,
+)
 from .whitelist import (
     Whitelist,
     load_monitored,
@@ -57,6 +63,13 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Fetched once on the first successful refresh; the model never
         # changes until a reboot with different firmware.
         self.router_info: dict[str, Any] | None = None
+        # Session-yield state: the router allows ONE active local admin
+        # session per account (bound to the last login's source IP). When
+        # a human logs into the web UI the integration's next poll gets a
+        # 401; instead of re-logging in immediately (which kicks the human
+        # back), stop polling for a while and keep serving the last data.
+        self._last_good_data: dict[str, Any] | None = None
+        self._yield_until: datetime | None = None
 
     async def async_reload_whitelist(self) -> None:
         """Re-read both lists and refresh all entity states."""
@@ -88,10 +101,42 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         self._async_refresh_lists_if_changed()
 
+        # Session yield: while another client owns the admin session, keep
+        # serving the last snapshot without touching the router at all.
+        if self._yield_until is not None:
+            if datetime.now() < self._yield_until and self._last_good_data:
+                return dict(self._last_good_data)
+            # Grace period is over: take the session back proactively so
+            # the following query does not fail (and yield again).
+            self._yield_until = None
+            try:
+                await self.client.async_login()
+            except RouterConnectionError as err:
+                raise UpdateFailed(f"Cannot reach router: {err}") from err
+            except RouterAuthError as err:
+                raise UpdateFailed(f"Router authentication failed: {err}") from err
+
         try:
             hosts = await self.client.async_get_host_info()
         except RouterAuthError:
-            # The token may have expired. Re-login once and retry immediately.
+            if self.client.stok:
+                # We HAD a working session that is now gone — someone else
+                # (web UI login) took over the single-session router.
+                # Yield instead of stealing it back immediately.
+                self._yield_until = datetime.now() + timedelta(
+                    minutes=SESSION_YIELD_MINUTES
+                )
+                _LOGGER.warning(
+                    "Router admin session was taken over by another client "
+                    "(likely a web UI login). Yielding for %s minutes to let "
+                    "the human work; entity data will stay on the last values "
+                    "until then.",
+                    SESSION_YIELD_MINUTES,
+                )
+                if self._last_good_data:
+                    return dict(self._last_good_data)
+            # No previous session (startup) — this is a genuine login
+            # failure, retry once as before.
             try:
                 await self.client.async_login()
                 hosts = await self.client.async_get_host_info()
@@ -185,7 +230,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if part
         )
 
-        return {
+        data = {
             "devices": devices,
             "router_model": router_model or "unknown",
             "router_info": router_info,
@@ -207,3 +252,6 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ATTR_WHITELIST_COUNT: self.whitelist.count,
             ATTR_LAST_UPDATE: datetime.now(),
         }
+        # Snapshot for the session-yield period.
+        self._last_good_data = dict(data)
+        return data
