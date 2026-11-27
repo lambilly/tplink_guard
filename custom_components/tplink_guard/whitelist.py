@@ -388,6 +388,13 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
         name_cn = parts[1] if len(parts) > 1 and parts[1] else key
         name_en = parts[2] if len(parts) > 2 and parts[2] else ""
         expected = parts[3] if len(parts) > 3 and parts[3] else "home"
+        op = "eq"
+        # ``ne:unavailable`` / ``!=unavailable`` marks an entity online when
+        # its state is anything other than the value after the prefix.
+        if expected.startswith("ne:"):
+            op, expected = "ne", expected[3:]
+        elif expected.startswith("!="):
+            op, expected = "ne", expected[2:]
         mac = normalize_mac(key)
         if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", key):
             item = {
@@ -417,7 +424,7 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
                 "entity_id": key,
                 "name_cn": name_cn,
                 "name_en": name_en,
-                "op": "eq",
+                "op": op,
                 "expected": expected,
             }
         else:

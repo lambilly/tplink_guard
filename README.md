@@ -18,8 +18,7 @@
 - 手机名单备注字段为 `姓名,昵称,设备名`，解析后随实体属性 `watchlist` 输出
 - **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体名,显示名`，第二字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`），第三字段为中文显示名（可省略）
 - **AP 名单 TXT**（`lists/ap.txt`）：每行 `IP,名称`，直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），生成 AP All / Online / Offline Count 三个计数实体
-- **网关名单 TXT**（`lists/gateway.txt`）：`IP,名称` 直接探测网关；`实体ID,名称,eq|ne,期望值` 读取 HA 其它集成的实体状态（蓝牙网关 / ESPHome 蓝牙代理），生成 Gateway Online Count 实体；网关不再依赖 `iphonedetect` 的 device_tracker
-- **分组在线名单 TXT**（`lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：统一格式 `标识,中文名,英文名[,期望值]`，第一列是 MAC 则比对 TPLINK 在线终端表、是 IP 则探测、是实体 ID 则读 HA 状态。分别生成 ASR / Server / Router Online Count，增删终端只改对应 TXT 一行，文件变化自动重载
+- **分组在线名单 TXT**（`lists/gateway.txt` / `lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：统一格式 `标识,中文名,英文名[,期望值]`，第一列是 MAC 则比对 TPLINK 在线终端表、是 IP 则探测、是实体 ID 则读 HA 状态。分别生成 Gateway / ASR / Server / Router Online Count，增删终端只改对应 TXT 一行，文件变化自动重载；网关不再依赖 `iphonedetect` 的 device_tracker
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -138,35 +137,13 @@ AP 名单示例（字段：`IP,名称`）：
 - 三个计数实体同时暴露 `aps` 数组（每台 AP 的 `ip / name / online`）与旧 Node-RED 传感器 `sensor.ap_online_count` 的兼容属性：`ap_all_count / ap_all_list / ap_online_count / ap_online_list / ap_offline_count / ap_offline_list / update_time`，单位同为「个」，可直接替换旧的 NR 实体（列表以 `｜` 分隔，离线为空时显示「无」）
 - 名称可省略（省略时用 IP 显示）；`#` 后为注释；名单变化自动重载，也可调用 `tplink_guard.reload_whitelist`
 
-网关名单示例（两种条目）：
+网关 / ASR / 服务器 / 路由器共用同一套「第一列决定判定方式」的名单格式 `标识,中文名,英文名[,期望值]`，文件分别位于 `lists/gateway.txt`、`lists/asr.txt`、`lists/server.txt`、`lists/router.txt`：
 
 ```
-192.168.1.4, 青萍网关
-sensor.bluetooth_proxy_dm_ip_address, 大门蓝牙代理, eq, 192.168.1.18
-sensor.84469303d628_action, 蓝牙网关, ne, unavailable
-```
-
-- `IP,名称`：直接探测 IP 在线（不依赖任何第三方 `device_tracker`，可安全删除 `iphonedetect`）
-- `实体ID,名称,eq|ne,期望值`：读取 HA 实体状态；`eq` 表示状态等于期望值（默认），`ne` 表示不等于；实体不存在时按离线处理
-- 蓝牙代理的 IP 来自 ESPHome 上报，蓝牙网关来自 `xiaomi_gateway3` 事件；这些都不是从路由器网络表读取
-- `sensor.tplink_guard_gateway_online_count` 复刻旧 NR 实体的 `gateway_all_count / gateway_all_list / gateway_online_count / gateway_online_list / gateway_offline_count / gateway_offline_list / update_time`，单位「台」，并保留 `gateway_devices` 明细（含每项 `entity_id / name / state / online`）
-- 名单变化自动重载，同样由 `tplink_guard.reload_whitelist` 触发
-
-ASR 名单位于 `lists/asr.txt`，格式为 `MAC,中文名,英文名`——集成用 MAC 比对从 TPLINK 获取到的全部在线终端表，不再依赖任何 HA 实体状态或 IP sensor（设备换了 IP 也能正确识别）：
-
-```
-# asr.txt
-48-55-19-64-F8-97, 客厅小黑, keting_xiaohei
-84-CC-A8-98-01-F6, 主卧小黑, zhuwo_xiaohei
-F4-CF-A2-E5-D5-B1, 复刻小乐, fuke_xiaole
-```
-
-服务器 / 路由器名单位于 `lists/server.txt`、`lists/router.txt`，与 ASR 共用同一套「第一列决定判定方式」的格式 `标识,中文名,英文名[,期望值]`：
-
-```
-# server.txt
-00-E0-B4-1D-D3-1E, 群晖 NAS, lamnas_ws          # MAC -> 比对 TPLINK 在线终端表
-device_tracker.keting_daphile, 客厅音乐, keting_daphile, home  # 实体ID -> 读 HA 状态
+# gateway.txt
+1C-EA-AC-35-A3-89, 青萍网关, qingping_gateway   # MAC -> 比对 TPLINK 在线终端表
+192.168.1.7, 多模网关, duomo_gateway             # IP -> 直接探测
+sensor.84469303d628_action, 蓝牙网关, lanya_gateway, ne:unavailable  # 实体ID -> 读 HA 状态
 # router.txt
 192.168.1.1, 主路由, main_router                # IP -> 直接探测（主路由不在自己终端表）
 94-83-C4-53-EC-0C, 旁路由, istoreos             # MAC -> 比对 TPLINK 在线终端表
@@ -174,11 +151,11 @@ device_tracker.keting_daphile, 客厅音乐, keting_daphile, home  # 实体ID ->
 
 判定规则：
 - **MAC**（12 位十六进制）：比对 TPLINK 在线终端表，设备换 IP 也能正确识别，最可靠
-- **IP**（IPv4）：直接探测该 IP，用于主路由 / 交换机等不在路由器自身终端表里的设备
-- **实体 ID**（含 `.`）：读 HA 实体状态，第四列为期望值（缺省 `home`），用于无 MAC 又不便探测的设备
-
-- `sensor.tplink_guard_asr_online_count` / `sensor.tplink_guard_server_online_count` / `sensor.tplink_guard_router_online_count` 各复刻旧 NR 实体的 7 个属性（`<组名>_all_count / _all_list / _online_count / _online_list / _offline_count / _offline_list / update_time`），并保留 `<组名>_devices` 明细（含 `mac / name_cn / name_en / entity_id / ip / hostname / state / online`）
-- 单位分别为「个」「台」「台」，与旧 NR 实体一致；新增设备只需在对应 TXT 增加一行，无需改代码或重启
+- **IP**（IPv4）：直接探测该 IP，用于主路由 / 交换机 / 路由器表中标记 offline 但实际在线的网关
+- **实体 ID**（含 `.`）：读 HA 实体状态，第四列为期望值（缺省 `home`）；`ne:unavailable` 表示状态不等于 `unavailable` 即在线（蓝牙 Mesh 设备的 action 传感器在线时为空串）
+- 实体不存在时按离线处理；名单变化自动重载，也可调用 `tplink_guard.reload_whitelist`
+- 四个在线数实体各复刻旧 NR 实体的 7 个属性（`<组名>_all_count / _all_list / _online_count / _online_list / _offline_count / _offline_list / update_time`），并保留 `<组名>_devices` 明细（含 `mac / name_cn / name_en / entity_id / ip / hostname / state / online`）
+- 单位为「台」「个」「台」「台」，与旧 NR 实体一致；新增设备只需在对应 TXT 增加一行，无需改代码或重启
 
 ## 给自动化 / Node-RED 使用
 

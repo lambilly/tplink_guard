@@ -280,7 +280,12 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else:  # state
                 entity = self.hass.states.get(item.get("entity_id") or "")
                 state = str(entity.state) if entity is not None else ""
-                online = entity is not None and state == item.get("expected")
+                if entity is None:
+                    online = False
+                elif item.get("op") == "ne":
+                    online = state != item.get("expected")
+                else:
+                    online = state == item.get("expected")
             result_devices.append(
                 {
                     "mac": mac,

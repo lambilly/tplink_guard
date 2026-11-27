@@ -41,7 +41,7 @@ CHECKLIST_GROUPS: tuple[tuple[str, str, str], ...] = (
 # the strategy (MAC -> router online table, IP -> LAN probe, entity id -> HA
 # state). This keeps NAS/routers/switches reliable even when they are absent
 # from the router's own host table or expose no HA entity.
-MAC_CHECKLIST_GROUPS: tuple[str, ...] = ("asr", "server", "router")
+MAC_CHECKLIST_GROUPS: tuple[str, ...] = ("gateway", "asr", "server", "router")
 # List files live in a subfolder of the integration directory so /config
 # stays clean: /config/custom_components/tplink_guard/lists/
 DEFAULT_LISTS_RELDIR = "custom_components/tplink_guard/lists"

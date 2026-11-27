@@ -1,8 +1,10 @@
 # TPLink Guard 网关 / 蓝牙代理名单示例
-# 两种条目：
-#   1) IP,名称                      —— 直接探测 IP 是否在线（网关等基础设施）
-#   2) 实体ID,名称,判定规则,期望值   —— 读取 HA 实体状态（蓝牙代理等其它集成）
-# 判定规则 eq = 状态等于期望值（默认）；ne = 状态不等于期望值；'#' 后为注释
-192.168.1.4, Qingping Gateway
-sensor.84469303d628_action, Bluetooth Gateway, ne, unavailable
-sensor.bluetooth_proxy_dm_ip_address, Front Door Proxy, eq, 192.168.1.31
+# 第一列决定判定方式，格式：标识,中文名,英文名[,期望值]
+#   MAC      -> 比对 TPLINK 在线终端表（推荐）
+#   IP       -> 直接探测该 IP（不在 TPLINK 终端表里的网关）
+#   实体ID   -> 读 HA 实体状态，第四列为期望值；ne:unavailable 表示状态不是 unavailable 即在线
+# 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
+1C-EA-AC-35-A3-89, Qingping Gateway, qingping_gateway
+192.168.1.7, Multi-Mode Gateway, duomo_gateway
+sensor.84469303d628_action, Bluetooth Gateway, lanya_gateway, ne:unavailable
+sensor.bluetooth_proxy_dm_ip_address, Front Door Proxy, damen_proxy, 192.168.1.18
