@@ -1,7 +1,6 @@
-# ASR 语音终端名单：MAC, 中文名, 英文名
-# 集成用 MAC 比对从 TPLINK 获取到的全部在线终端数据判断在线/离线，不依赖任何 HA 实体状态。
-# 修改/增删后自动重载；英文名用于设备标识与属性输出。
-# 示例（请替换为你自己的设备）：
+# TPLink Guard ASR 语音终端名单：每行格式 MAC,中文名,英文名
+# MAC 比对 TPLINK 在线终端表判断在线/离线，不依赖 HA 实体状态
+# 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
 48-55-19-64-F8-97, 客厅小黑, keting_xiaohei
 84-CC-A8-98-01-F6, 主卧小黑, zhuwo_xiaohei
 68-C6-3A-F7-65-C3, 次卧小黑, ciwo_xiaohei

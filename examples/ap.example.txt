@@ -1,6 +1,6 @@
-# TPLink Guard AP 名单示例
-# 每行格式：IP,名称（'#' 后为注释；名称可省略，省略时用 IP）
-# AP 由路由器 AC 管理，不会出现在 host_info 在线终端表里，集成直接探测 IP
+# TPLink Guard AP 名单：每行格式 IP,名称（'#' 后为注释）
+# AP 由路由器 AC 管理，不在 host_info 中，集成直接探测 IP 判断是否在线
+# 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
 192.168.1.11, Living Room AP
 192.168.1.12, Bedroom AP
 192.168.1.13, Study AP

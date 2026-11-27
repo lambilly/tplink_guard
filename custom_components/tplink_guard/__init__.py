@@ -81,6 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "tplink_guard_whitelist.txt": DEFAULT_WHITELIST_FILENAME,
         "tplink_guard_phone.txt": DEFAULT_PHONE_FILENAME,
         "tplink_guard_monitored.txt": DEFAULT_MONITORED_FILENAME,
+        "monitored.txt": DEFAULT_MONITORED_FILENAME,
         "tplink_guard_watchlist.txt": DEFAULT_PHONE_FILENAME,
         "tplink_guard_ap.txt": DEFAULT_AP_FILENAME,
         "tplink_guard_gateway.txt": DEFAULT_GATEWAY_FILENAME,

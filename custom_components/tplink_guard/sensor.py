@@ -18,7 +18,6 @@ from homeassistant.helpers.entity_registry import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    ATTR_DEVICES,
     ATTR_LAST_UPDATE,
     ATTR_WATCHLIST,
     ATTR_WHITELIST_COUNT,
@@ -335,7 +334,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 if str(item.get("mac") or "") not in online_macs
             ]
             return {
-                ATTR_DEVICES: online_devices,
                 "phone_all_count": len(roster),
                 "phone_online_count": data.get("phone_online_count"),
                 "phone_offline_count": data.get("phone_offline_count"),
@@ -437,10 +435,8 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 for mac, entry in entries.items()
                 if str(mac) not in online_macs
             ]
-            attrs[ATTR_WHITELIST_COUNT] = total
             attrs.update(
                 {
-                    "whitelist_terminal_count": total,
                     "whitelist_online_count": online_count,
                     "whitelist_offline_count": max(total - online_count, 0),
                     "whitelist_all_count": total,

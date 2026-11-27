@@ -1,6 +1,6 @@
-"""Device tracker entities for monitored terminals.
+"""Device tracker entities for device terminals.
 
-Each line of the monitored list file (``lists/monitored.txt`` inside the
+Each line of the device list file (``lists/device.txt`` inside the
 integration folder) defines one terminal that gets its own device_tracker
 entity showing whether it is online (home) or offline (not_home).
 

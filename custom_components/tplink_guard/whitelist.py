@@ -198,13 +198,14 @@ def load_whitelist(path: str | os.PathLike[str] | None) -> Whitelist:
 
 
 def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
-    """Load the monitored-terminal list.
+    """Load the device-terminal list (``lists/device.txt``).
 
     Each line defines a terminal that gets its own device_tracker entity:
     ``MAC, entity_id, 备注``. The second field decides the entity id and
     name; the third field is a documentation-only note and is ignored.
     A missing entity id is auto-filled later from the router hostname.
-    Comment lines start with ``#``.
+    Comment lines start with ``#``. The function name is kept for API
+    stability; the user-facing file name is now ``device.txt``.
     """
     if not path:
         return []
@@ -349,20 +350,16 @@ def load_checklist(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
 
 
 def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
-    """Load an online-check list whose first column decides the strategy.
+    """Load an online-check list whose first column is a MAC or an IP.
 
-    Every line is ``key, 中文名, 英文名[, 期望值]`` (``#`` starts a comment).
-    ``key`` may be:
+    Every line is ``标识,中文名,英文名`` (``#`` starts a comment):
 
     * a MAC address -> ``kind=mac``: matched against the router's online
       host table (the reliable path used for ASR, NAS, etc.);
     * an IPv4 address -> ``kind=probe``: probed directly over the LAN
-      (routers/switches never appear in the router's own host table);
-    * an HA entity id -> ``kind=state``: compared with ``期望值`` (default
-      ``home``) from the HA state machine (fallback for devices that expose
-      neither a usable MAC nor an IP).
+      (routers/switches never appear in the router's own host table).
 
-    Duplicate keys are ignored.
+    No HA entity state is consulted. Duplicate keys are ignored.
     """
     if not path:
         return []
@@ -387,14 +384,6 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
             continue
         name_cn = parts[1] if len(parts) > 1 and parts[1] else key
         name_en = parts[2] if len(parts) > 2 and parts[2] else ""
-        expected = parts[3] if len(parts) > 3 and parts[3] else "home"
-        op = "eq"
-        # ``ne:unavailable`` / ``!=unavailable`` marks an entity online when
-        # its state is anything other than the value after the prefix.
-        if expected.startswith("ne:"):
-            op, expected = "ne", expected[3:]
-        elif expected.startswith("!="):
-            op, expected = "ne", expected[2:]
         mac = normalize_mac(key)
         if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", key):
             item = {
@@ -417,18 +406,9 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
                 "op": "eq",
                 "expected": "",
             }
-        elif "." in key:
-            item = {
-                "kind": "state",
-                "target": key,
-                "entity_id": key,
-                "name_cn": name_cn,
-                "name_en": name_en,
-                "op": op,
-                "expected": expected,
-            }
         else:
-            _LOGGER.debug("Skipping invalid checklist line: %s", line)
+            # Lists are IP/MAC only; entity-id rows are no longer accepted.
+            _LOGGER.debug("Skipping non-IP/MAC checklist line: %s", line)
             continue
         seen.add(key)
         result.append(item)

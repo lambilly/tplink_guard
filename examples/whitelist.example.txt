@@ -1,9 +1,7 @@
-# TPLink Guard 白名单示例 —— 复制为 custom_components/tplink_guard/lists/whitelist.txt 后按实际修改
-# 每行格式：MAC # 字段1,字段2,...（字段用逗号区隔；名称在前，IP 不加括号）
-# 不在表中的终端一律视为陌生。
-# 注意：不要用引号，MAC 中的横杠/冒号均可，匹配时会统一归一化；IP 字段可选，用于按 IP 匹配。
-
-94-83-C4-53-EC-0C # 旁路由,192.168.1.2
+# TPLink Guard 白名单：每行格式 MAC # 名称,IP（字段用逗号区隔，IP 不加括号）
+# 不在表中的终端一律视为陌生；IP 字段可选，用于按 IP 匹配
+# 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
+94-83-C4-53-EC-0C # iStoreOS,192.168.1.2
 20-BD-1D-D7-85-57 # 台式机,192.168.1.10
 4C-C6-4C-EC-0C-3B # 网关,192.168.1.6
 AA-BB-CC-DD-EE-01 # 家人手机-张三

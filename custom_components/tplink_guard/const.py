@@ -23,7 +23,7 @@ DEFAULT_USERNAME = "admin"
 DEFAULT_SCAN_INTERVAL = 60
 DEFAULT_WHITELIST_FILENAME = "whitelist.txt"
 DEFAULT_PHONE_FILENAME = "phone.txt"
-DEFAULT_MONITORED_FILENAME = "monitored.txt"
+DEFAULT_MONITORED_FILENAME = "device.txt"
 DEFAULT_AP_FILENAME = "ap.txt"
 DEFAULT_GATEWAY_FILENAME = "gateway.txt"
 DEFAULT_ASR_FILENAME = "asr.txt"
@@ -37,9 +37,9 @@ CHECKLIST_GROUPS: tuple[tuple[str, str, str], ...] = (
     ("server", CONF_SERVER_PATH, DEFAULT_SERVER_FILENAME),
     ("router", CONF_ROUTER_PATH, DEFAULT_ROUTER_FILENAME),
 )
-# Groups driven by the MAC-first checklist loader: the first column decides
-# the strategy (MAC -> router online table, IP -> LAN probe, entity id -> HA
-# state). This keeps NAS/routers/switches reliable even when they are absent
+# Groups driven by the IP/MAC checklist loader: the first column decides
+# the strategy (MAC -> router online table, IP -> LAN probe). No HA entity
+# state is consulted, so NAS/routers/switches work even when they are absent
 # from the router's own host table or expose no HA entity.
 MAC_CHECKLIST_GROUPS: tuple[str, ...] = ("gateway", "asr", "server", "router")
 # List files live in a subfolder of the integration directory so /config

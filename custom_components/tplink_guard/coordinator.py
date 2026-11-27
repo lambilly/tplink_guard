@@ -221,15 +221,14 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_mac_checklist_snapshot(
         self, group: str, devices: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Resolve a MAC-driven checklist against the best available source.
+        """Resolve an IP/MAC checklist against the router snapshot or LAN.
 
         * ``mac`` entries are matched against the router's online host table;
         * ``probe`` entries are pinged over the LAN (routers/switches never
-          appear in their own host table);
-        * ``state`` entries fall back to an HA entity state.
+          appear in their own host table).
 
-        Computed after ``devices`` is built because MAC matching needs the
-        fresh router snapshot.
+        No HA entity state is consulted. Computed after ``devices`` is built
+        because MAC matching needs the fresh router snapshot.
         """
         entries = self.checklists.get(group) or []
         if not entries:
@@ -277,15 +276,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 online = matched is not None
             elif kind == "probe":
                 online = probe_online.get(index, False)
-            else:  # state
-                entity = self.hass.states.get(item.get("entity_id") or "")
-                state = str(entity.state) if entity is not None else ""
-                if entity is None:
-                    online = False
-                elif item.get("op") == "ne":
-                    online = state != item.get("expected")
-                else:
-                    online = state == item.get("expected")
+            else:
+                # Legacy entity-id rows are no longer loaded from the lists.
+                online = False
             result_devices.append(
                 {
                     "mac": mac,
