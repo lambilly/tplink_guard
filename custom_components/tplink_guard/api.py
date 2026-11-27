@@ -232,14 +232,12 @@ class RouterClient:
         )
         info = _find_dict_with_key(data, "model") or {}
         return {
-            "model": str(info.get("model") or ""),
-            "hardware_version": str(info.get("hardware_version") or ""),
-            "firmware_version": str(
-                info.get("firmware_version")
-                or info.get("fw_version")
-                or ""
+            "model": _decode(info.get("model")),
+            "hardware_version": _decode(info.get("hardware_version")),
+            "firmware_version": _decode(
+                info.get("firmware_version") or info.get("fw_version")
             ),
-            "mac": str(info.get("mac") or ""),
+            "mac": _decode(info.get("mac")),
         }
 
     async def async_get_static_assignments(self) -> list[dict[str, Any]]:
