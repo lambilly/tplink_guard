@@ -47,9 +47,7 @@ OBJECT_IDS: dict[str, str] = {
     # sensor.tplink_guard_guest_visit_count.
     "guest_visit": "guest_visit_count",
     "router_model": "router_model",
-    "ap_all_count": "ap_all_count",
     "ap_online_count": "ap_online_count",
-    "ap_offline_count": "ap_offline_count",
     "gateway_online_count": "gateway_online_count",
     "asr_online_count": "asr_online_count",
     "server_online_count": "server_online_count",
@@ -131,19 +129,9 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         icon="mdi:chip",
     ),
     SensorEntityDescription(
-        key="ap_all_count",
-        name="AP All Count",
-        icon="mdi:access-point",
-    ),
-    SensorEntityDescription(
         key="ap_online_count",
         name="AP Online Count",
         icon="mdi:wifi-marker",
-    ),
-    SensorEntityDescription(
-        key="ap_offline_count",
-        name="AP Offline Count",
-        icon="mdi:wifi-off",
     ),
     SensorEntityDescription(
         key="gateway_online_count",
@@ -303,11 +291,7 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             name="TPLink Guard",
             manufacturer="TP-Link",
         )
-        if description.key in (
-            "ap_all_count",
-            "ap_online_count",
-            "ap_offline_count",
-        ):
+        if description.key == "ap_online_count":
             # Match the legacy Node-RED sensor's "个" unit so dashboards
             # can switch entity ids without changing their formatting.
             self._attr_native_unit_of_measurement = "个"
@@ -360,11 +344,7 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
-        if self.entity_description.key in (
-            "ap_all_count",
-            "ap_online_count",
-            "ap_offline_count",
-        ):
+        if self.entity_description.key == "ap_online_count":
             # Legacy Node-RED produced sensor.ap_online_count with these
             # attributes; keep them identical so dashboards can switch
             # entity ids without changing any template logic.
