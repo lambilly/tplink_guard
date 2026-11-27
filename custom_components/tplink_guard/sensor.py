@@ -320,10 +320,8 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 name for device, name in zip(devices, names) if not device.get("online")
             ]
             return {
-                "monitored_devices": devices,
                 "monitored_online_count": data.get("monitored_online_count"),
                 "monitored_offline_count": data.get("monitored_offline_count"),
-                "monitored_terminal_count": data.get("monitored_count"),
                 "monitored_all_count": len(devices),
                 "monitored_all_list": "｜".join(names) or "无",
                 "monitored_online_list": "｜".join(online) or "无",
@@ -352,23 +350,14 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 for item in roster
                 if str(item.get("mac") or "") not in online_macs
             ]
-            ips = [
-                str(device.get("ip") or "")
-                for device in online_devices
-                if device.get("ip")
-            ]
             return {
                 ATTR_DEVICES: online_devices,
-                ATTR_WATCHLIST: roster,
-                "phone_detail": roster,
-                "phone_count": data.get("phone_count"),
                 "phone_all_count": len(roster),
                 "phone_online_count": data.get("phone_online_count"),
                 "phone_offline_count": data.get("phone_offline_count"),
                 "phone_all_list": "｜".join(roster_names) or "无",
                 "phone_online_list": "｜".join(online_names) or "无",
                 "phone_offline_list": "｜".join(offline_names) or "无",
-                "phone_online_ip": ", ".join(ips) if ips else "none",
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }
@@ -385,8 +374,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             ]
             ips = [str(device.get("ip") or "") for device in devices if device.get("ip")]
             return {
-                ATTR_DEVICES: devices,
-                "unknown_devices": devices,
                 "unknown_terminal_count": data.get("unknown_count"),
                 "unknown_terminal_ip": ", ".join(ips) if ips else "none",
                 "unknown_all_count": len(devices),
@@ -425,7 +412,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 if str(mac) not in online_macs
             ]
             return {
-                ATTR_DEVICES: online_devices,
                 ATTR_WHITELIST_COUNT: total,
                 "whitelist_terminal_count": total,
                 "whitelist_online_count": online_count,
@@ -447,7 +433,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             online = [name for ap, name in zip(aps, names) if ap.get("online")]
             offline = [name for ap, name in zip(aps, names) if not ap.get("online")]
             return {
-                "aps": aps,
                 "ap_all_count": len(aps),
                 "ap_all_list": "｜".join(names) or "无",
                 "ap_online_count": len(online),
@@ -474,7 +459,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 name for device, name in zip(devices, names) if not device.get("online")
             ]
             return {
-                f"{group}_devices": devices,
                 f"{group}_all_count": len(devices),
                 f"{group}_all_list": "｜".join(names) or "无",
                 f"{group}_online_count": len(online),

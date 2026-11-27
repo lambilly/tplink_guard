@@ -1,34 +1,30 @@
 # 示例：陌生终端上线时通知，恢复后清除
 # 把这段追加到 HA 的 automations.yaml，或复制到自动化编辑器中。
 #
-# 注意：下面用的是全新安装时生成的英文实体 ID。若你的 HA 是旧版本升级、
-# 实体 ID 为拼音形式（可在「开发者工具 → 状态」查看），请按实际 ID 替换。
+# 两个 binary_sensor 已移除，改用合并后的 online count 实体做数值触发。
 
 - alias: 主路由发现陌生终端
   description: 在线终端不在白名单时推送通知
   mode: single
   trigger:
-    - platform: state
-      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
-      from: "off"
-      to: "on"
+    - platform: numeric_state
+      entity_id: sensor.tplink_guard_unknown_terminal_count
+      above: 0
   action:
     - service: persistent_notification.create
       data:
         notification_id: tplink_guard_unknown
         title: 主路由发现陌生终端
         message: >-
-          陌生终端 IP：{{ state_attr('sensor.unknown_terminal_ip', 'devices')
-          | map(attribute='ip') | join(', ') }}
+          陌生终端 IP：{{ state_attr('sensor.tplink_guard_unknown_terminal_count', 'unknown_terminal_ip') }}
 
 - alias: 主路由陌生终端已离线
   description: 陌生终端全部离线后清除通知
   mode: single
   trigger:
-    - platform: state
-      entity_id: binary_sensor.tplink_guard_unknown_terminal_present
-      from: "on"
-      to: "off"
+    - platform: numeric_state
+      entity_id: sensor.tplink_guard_unknown_terminal_count
+      below: 1
   action:
     - service: persistent_notification.dismiss
       data:
@@ -38,15 +34,14 @@
   description: 手机名单中的终端上线时推送通知
   mode: single
   trigger:
-    - platform: state
-      entity_id: binary_sensor.tplink_guard_phone_online
-      from: "off"
-      to: "on"
+    - platform: numeric_state
+      entity_id: sensor.tplink_guard_phone_online_count
+      above: 0
   action:
     - service: persistent_notification.create
       data:
         notification_id: tplink_guard_phone_online
         title: 手机终端已上线
         message: >-
-          手机终端 IP：{{ state_attr('binary_sensor.tplink_guard_phone_online', 'devices')
+          手机终端 IP：{{ state_attr('sensor.tplink_guard_phone_online_count', 'devices')
           | map(attribute='ip') | join(', ') }}

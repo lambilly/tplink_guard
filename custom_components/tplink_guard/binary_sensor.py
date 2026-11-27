@@ -26,11 +26,9 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 
-# English object ids -> entity_id is <platform>.tplink_guard_<object_id>
-OBJECT_IDS: dict[str, str] = {
-    "unknown_present": "unknown_terminal_present",
-    "watched_online": "phone_online",
-}
+# Both legacy binary sensors were retired in favour of the merged online
+# count sensors. No binary sensor entities are created any more.
+OBJECT_IDS: dict[str, str] = {}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -41,23 +39,7 @@ class TPLinkGuardBinaryDescription(BinarySensorEntityDescription):
     devices_key: str
 
 
-DESCRIPTIONS: tuple[TPLinkGuardBinaryDescription, ...] = (
-    TPLinkGuardBinaryDescription(
-        key="unknown_present",
-        name="Unknown Terminal Present",
-        icon="mdi:shield-alert",
-        count_key="unknown_count",
-        devices_key="unknown_devices",
-    ),
-    TPLinkGuardBinaryDescription(
-        key="watched_online",
-        name="Phone Online",
-        icon="mdi:bell-outline",
-        translation_key="watched_online",
-        count_key="phone_online_count",
-        devices_key="phone_online",
-    ),
-)
+DESCRIPTIONS: tuple[TPLinkGuardBinaryDescription, ...] = ()
 
 
 async def async_setup_entry(
