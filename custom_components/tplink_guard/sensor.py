@@ -50,6 +50,7 @@ OBJECT_IDS: dict[str, str] = {
     "ap_all_count": "ap_all_count",
     "ap_online_count": "ap_online_count",
     "ap_offline_count": "ap_offline_count",
+    "gateway_online_count": "gateway_online_count",
 }
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
@@ -131,6 +132,11 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         key="ap_offline_count",
         name="AP Offline Count",
         icon="mdi:wifi-off",
+    ),
+    SensorEntityDescription(
+        key="gateway_online_count",
+        name="Gateway Online Count",
+        icon="mdi:network-outline",
     ),
 )
 
@@ -278,6 +284,8 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             # Match the legacy Node-RED sensor's "个" unit so dashboards
             # can switch entity ids without changing their formatting.
             self._attr_native_unit_of_measurement = "个"
+        elif description.key == "gateway_online_count":
+            self._attr_native_unit_of_measurement = "台"
         if description.key == "guest_visit":
             # Attached to the TPLink Guard device; entity id follows the
             # natural prefixed scheme (sensor.tplink_guard_guest_visit_count,
@@ -342,6 +350,23 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 "ap_online_list": "｜".join(online) or "无",
                 "ap_offline_count": len(offline),
                 "ap_offline_list": "｜".join(offline) or "无",
+                "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
+                ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
+            }
+        if self.entity_description.key == "gateway_online_count":
+            # Mirror the legacy Node-RED gateway sensor attributes.
+            gateways = data.get("gateway_devices") or []
+            names = [str(g.get("name") or g.get("entity_id") or "") for g in gateways]
+            online = [name for g, name in zip(gateways, names) if g.get("online")]
+            offline = [name for g, name in zip(gateways, names) if not g.get("online")]
+            return {
+                "gateway_devices": gateways,
+                "gateway_all_count": len(gateways),
+                "gateway_all_list": "｜".join(names) or "无",
+                "gateway_online_count": len(online),
+                "gateway_online_list": "｜".join(online) or "无",
+                "gateway_offline_count": len(offline),
+                "gateway_offline_list": "｜".join(offline) or "无",
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }

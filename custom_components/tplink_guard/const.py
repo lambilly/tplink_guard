@@ -10,6 +10,7 @@ CONF_WHITELIST_PATH = "whitelist_path"
 CONF_WATCHLIST_PATH = "watchlist_path"
 CONF_MONITORED_PATH = "monitored_path"
 CONF_AP_PATH = "ap_path"
+CONF_GATEWAY_PATH = "gateway_path"
 CONF_MATCH_BY = "match_by"
 
 DEFAULT_NAME = "TPLink Guard"
@@ -21,6 +22,7 @@ DEFAULT_WHITELIST_FILENAME = "whitelist.txt"
 DEFAULT_PHONE_FILENAME = "phone.txt"
 DEFAULT_MONITORED_FILENAME = "monitored.txt"
 DEFAULT_AP_FILENAME = "ap.txt"
+DEFAULT_GATEWAY_FILENAME = "gateway.txt"
 # List files live in a subfolder of the integration directory so /config
 # stays clean: /config/custom_components/tplink_guard/lists/
 DEFAULT_LISTS_RELDIR = "custom_components/tplink_guard/lists"

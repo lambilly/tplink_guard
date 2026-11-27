@@ -14,7 +14,8 @@
           "watchlist_path": "Phone list file path",
           "match_by": "匹配方式",
           "monitored_path": "Monitored terminals list file path",
-          "ap_path": "AP list file path"
+          "ap_path": "AP list file path",
+          "gateway_path": "Gateway / proxy list file path"
         }
       }
     },
@@ -30,7 +31,7 @@
   "services": {
     "reload_whitelist": {
       "name": "重新加载名单",
-      "description": "Re-read the configured whitelist, phone list, monitored terminals list and AP list files and refresh all entities."
+      "description": "Re-read the configured whitelist, phone list, monitored terminals list, AP and gateway list files and refresh all entities."
     }
   },
   "options": {
@@ -43,7 +44,8 @@
           "watchlist_path": "Phone list file path",
           "match_by": "匹配方式",
           "monitored_path": "Monitored terminals list file path",
-          "ap_path": "AP list file path"
+          "ap_path": "AP list file path",
+          "gateway_path": "Gateway / proxy list file path"
         }
       }
     }

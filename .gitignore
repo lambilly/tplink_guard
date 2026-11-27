@@ -8,6 +8,8 @@ phone.txt
 monitored.txt
 ap.txt
 tplink_guard_ap.txt
+gateway.txt
+tplink_guard_gateway.txt
 custom_components/tplink_guard/lists/*.txt
 *.bak
 *.bak-*

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -10,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import RouterAuthError, RouterClient, RouterConnectionError
-from .ap import async_probe_aps
+from .ap import async_probe_ap, async_probe_aps
 from .const import (
     AP_PROBE_TIMEOUT,
     ATTR_LAST_UPDATE,
@@ -22,6 +23,7 @@ from .const import (
 from .whitelist import (
     Whitelist,
     load_aps,
+    load_gateways,
     load_monitored,
     load_whitelist,
     split_watch_note,
@@ -45,6 +47,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         scan_interval: int,
         monitored_path: str | None = None,
         ap_path: str | None = None,
+        gateway_path: str | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -66,6 +69,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.ap_path = ap_path
         self.aps: list[dict[str, str]] = load_aps(ap_path)
         self._ap_mtime = whitelist_mtime(ap_path)
+        self.gateway_path = gateway_path
+        self.gateways: list[dict[str, str]] = load_gateways(gateway_path)
+        self._gateway_mtime = whitelist_mtime(gateway_path)
         self.devices: dict[str, dict[str, Any]] = {}
         # Fetched once on the first successful refresh; the model never
         # changes until a reboot with different firmware.
@@ -88,6 +94,8 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._monitored_mtime = whitelist_mtime(self.monitored_path)
         self.aps = load_aps(self.ap_path)
         self._ap_mtime = whitelist_mtime(self.ap_path)
+        self.gateways = load_gateways(self.gateway_path)
+        self._gateway_mtime = whitelist_mtime(self.gateway_path)
         await self.async_request_refresh()
 
     def _async_refresh_lists_if_changed(self) -> None:
@@ -111,6 +119,75 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("AP list changed, reloading")
             self.aps = load_aps(self.ap_path)
             self._ap_mtime = current
+        current = whitelist_mtime(self.gateway_path)
+        if current and current != self._gateway_mtime:
+            _LOGGER.debug("Gateway list changed, reloading")
+            self.gateways = load_gateways(self.gateway_path)
+            self._gateway_mtime = current
+
+    async def _async_gateway_snapshot(self) -> dict[str, Any]:
+        """Aggregate gateway/proxy states from probes and HA entities.
+
+        IP entries are probed directly (no third-party tracker needed);
+        entity entries are read from the HA state machine. Neither touches
+        the router admin session.
+        """
+        if not self.gateways:
+            return {
+                "gateway_all_count": 0,
+                "gateway_online_count": 0,
+                "gateway_offline_count": 0,
+                "gateway_devices": [],
+            }
+        probe_indexes = [
+            index
+            for index, item in enumerate(self.gateways)
+            if item.get("kind") == "probe"
+        ]
+        probe_results = await asyncio.gather(
+            *(
+                async_probe_ap(
+                    str(self.gateways[index].get("target") or ""),
+                    timeout=AP_PROBE_TIMEOUT,
+                )
+                for index in probe_indexes
+            ),
+            return_exceptions=True,
+        )
+        online_by_index = {
+            index: result is True
+            for index, result in zip(probe_indexes, probe_results)
+        }
+
+        devices: list[dict[str, Any]] = []
+        for index, item in enumerate(self.gateways):
+            if item.get("kind") == "probe":
+                online = online_by_index.get(index, False)
+                state = "online" if online else "offline"
+            else:
+                entity = self.hass.states.get(item.get("entity_id") or "")
+                state = str(entity.state) if entity is not None else ""
+                if entity is None:
+                    online = False
+                elif item.get("op") == "ne":
+                    online = state != item.get("expected")
+                else:
+                    online = state == item.get("expected")
+            devices.append(
+                {
+                    "entity_id": item.get("entity_id") or "",
+                    "name": item.get("name") or "",
+                    "state": state,
+                    "online": online,
+                }
+            )
+        online_count = sum(1 for device in devices if device["online"])
+        return {
+            "gateway_all_count": len(devices),
+            "gateway_online_count": online_count,
+            "gateway_offline_count": len(devices) - online_count,
+            "gateway_devices": devices,
+        }
 
     async def _async_ap_snapshot(self) -> dict[str, Any]:
         """Probe APs directly; independent of the router admin session."""
@@ -128,12 +205,13 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # APs are probed over the LAN, so this works even while the router
         # admin session is yielded to a human web-UI login.
         ap_data = await self._async_ap_snapshot()
+        gateway_data = await self._async_gateway_snapshot()
 
         # Session yield: while another client owns the admin session, keep
         # serving the last snapshot without touching the router at all.
         if self._yield_until is not None:
             if datetime.now() < self._yield_until and self._last_good_data:
-                return {**self._last_good_data, **ap_data}
+                return {**self._last_good_data, **ap_data, **gateway_data}
             # Grace period is over: take the session back proactively so
             # the following query does not fail (and yield again).
             self._yield_until = None
@@ -164,7 +242,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "until then.",
                     SESSION_YIELD_MINUTES,
                 )
-                return {**self._last_good_data, **ap_data}
+                return {**self._last_good_data, **ap_data, **gateway_data}
             # No prior data (startup) — this is a genuine login failure,
             # retry once as before.
             try:
@@ -262,6 +340,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         data = {
             **ap_data,
+            **gateway_data,
             "devices": devices,
             "router_model": router_model or "unknown",
             "router_info": router_info,

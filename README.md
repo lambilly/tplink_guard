@@ -18,6 +18,7 @@
 - 手机名单备注字段为 `姓名,昵称,设备名`，解析后随实体属性 `watchlist` 输出
 - **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体名,显示名`，第二字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`），第三字段为中文显示名（可省略）
 - **AP 名单 TXT**（`lists/ap.txt`）：每行 `IP,名称`，直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），生成 AP All / Online / Offline Count 三个计数实体
+- **网关名单 TXT**（`lists/gateway.txt`）：`IP,名称` 直接探测网关；`实体ID,名称,eq|ne,期望值` 读取 HA 其它集成的实体状态（蓝牙网关 / ESPHome 蓝牙代理），生成 Gateway Online Count 实体；网关不再依赖 `iphonedetect` 的 device_tracker
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -35,12 +36,13 @@
    - `phone.txt`（手机名单）
    - `monitored.txt`（监控终端名单，不需要逐台实体可留空）
    - `ap.example.txt` → `ap.txt`（AP 名单，不需要 AP 监控可留空）
+   - `gateway.example.txt` → `gateway.txt`（网关 / 蓝牙代理名单，不需要网关监控可留空）
    然后按你自己的终端填写。
 3. 重启 Home Assistant。
 4. 在 HA 中进入「设置 → 设备与服务 → 添加集成」，搜索 `TPLink Guard`，按提示填写：
    - 主机地址、管理端口、用户名、密码
    - 刷新周期（秒）
-   - 白名单 / 手机名单 / 监控终端名单 / AP 名单文件路径（默认 `custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt`）
+   - 白名单 / 手机名单 / 监控终端名单 / AP 名单 / 网关名单文件路径（默认 `custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt` / `gateway.txt`）
    - 匹配方式（建议 `both`）
 
 > 密码只保存在 HA 的 `.storage/core.config_entries` 中，不会写入本项目的日志或文件。
@@ -69,6 +71,7 @@
 | `sensor.tplink_guard_ap_all_count` | AP All Count | AP 名单总数（属性 `aps` 含每台 AP 的 IP / 名称 / 在线状态） |
 | `sensor.tplink_guard_ap_online_count` | AP Online Count | 当前在线 AP 数 |
 | `sensor.tplink_guard_ap_offline_count` | AP Offline Count | 当前离线 AP 数 |
+| `sensor.tplink_guard_gateway_online_count` | Gateway Online Count | 网关 / 蓝牙代理在线数（兼容旧 NR 实体的 7 个属性与单位「台」） |
 | `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
 | `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
 | `device_tracker.<实体ID>` | <实体ID> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
@@ -128,6 +131,20 @@ AP 名单示例（字段：`IP,名称`）：
 - 三个计数实体同时暴露 `aps` 数组（每台 AP 的 `ip / name / online`）与旧 Node-RED 传感器 `sensor.ap_online_count` 的兼容属性：`ap_all_count / ap_all_list / ap_online_count / ap_online_list / ap_offline_count / ap_offline_list / update_time`，单位同为「个」，可直接替换旧的 NR 实体（列表以 `｜` 分隔，离线为空时显示「无」）
 - 名称可省略（省略时用 IP 显示）；`#` 后为注释；名单变化自动重载，也可调用 `tplink_guard.reload_whitelist`
 
+网关名单示例（两种条目）：
+
+```
+192.168.1.4, 青萍网关
+sensor.bluetooth_proxy_dm_ip_address, 大门蓝牙代理, eq, 192.168.1.18
+sensor.84469303d628_action, 蓝牙网关, ne, unavailable
+```
+
+- `IP,名称`：直接探测 IP 在线（不依赖任何第三方 `device_tracker`，可安全删除 `iphonedetect`）
+- `实体ID,名称,eq|ne,期望值`：读取 HA 实体状态；`eq` 表示状态等于期望值（默认），`ne` 表示不等于；实体不存在时按离线处理
+- 蓝牙代理的 IP 来自 ESPHome 上报，蓝牙网关来自 `xiaomi_gateway3` 事件；这些都不是从路由器网络表读取
+- `sensor.tplink_guard_gateway_online_count` 复刻旧 NR 实体的 `gateway_all_count / gateway_all_list / gateway_online_count / gateway_online_list / gateway_offline_count / gateway_offline_list / update_time`，单位「台」，并保留 `gateway_devices` 明细（含每项 `entity_id / name / state / online`）
+- 名单变化自动重载，同样由 `tplink_guard.reload_whitelist` 触发
+
 ## 给自动化 / Node-RED 使用
 
 `sensor.tplink_guard_phone_online_ip` 的 `watchlist` 属性是一个数组，包含**完整的关注名单**（含离线设备）：
@@ -153,11 +170,12 @@ examples/                         # 名单示例与自动化示例
   phone.example.txt
   monitored.example.txt
   ap.example.txt
+  gateway.example.txt
   automations.yaml
 LICENSE                           # MIT
 ```
 
-真实名单文件（`custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
+真实名单文件（`custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt` / `gateway.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
 
 ## 免责声明
 

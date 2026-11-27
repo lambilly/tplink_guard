@@ -283,6 +283,71 @@ def load_aps(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     return result
 
 
+def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
+    """Load the gateway / Bluetooth-proxy list.
+
+    Two line forms: ``IP, name`` probes the IP directly, and
+    ``entity_id, name, rule, expected`` reads an HA entity state where
+    ``rule`` is ``eq`` (equals, the default) or ``ne`` (differs from).
+    Direct probes avoid depending on third-party device_tracker entities.
+    """
+    if not path:
+        return []
+    file_path = Path(path)
+    if not file_path.exists():
+        _LOGGER.warning("Gateway list file not found: %s", file_path)
+        return []
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    try:
+        lines = file_path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as err:
+        _LOGGER.error("Failed to read gateway list %s: %s", file_path, err)
+        return []
+    for line in lines:
+        body = line.split("#", 1)[0].strip()
+        if not body:
+            continue
+        parts = [part.strip() for part in body.split(",")]
+        key = parts[0]
+        if not key or key in seen:
+            _LOGGER.debug("Skipping invalid gateway line: %s", line)
+            continue
+        seen.add(key)
+        name = parts[1] if len(parts) > 1 and parts[1] else key
+        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", key):
+            # Direct probe: no HA entity needed, works after removing
+            # third-party device_tracker integrations.
+            result.append(
+                {
+                    "kind": "probe",
+                    "target": key,
+                    "entity_id": key,
+                    "name": name,
+                    "op": "eq",
+                    "expected": "",
+                }
+            )
+            continue
+        if "." not in key:
+            _LOGGER.debug("Skipping invalid gateway line: %s", line)
+            continue
+        op = (parts[2] if len(parts) > 2 else "eq").lower()
+        if op not in ("eq", "ne", "equal", "not_equal"):
+            op = "eq"
+        result.append(
+            {
+                "kind": "state",
+                "target": key,
+                "entity_id": key,
+                "name": name,
+                "op": "ne" if op in ("ne", "not_equal") else "eq",
+                "expected": parts[3] if len(parts) > 3 else "",
+            }
+        )
+    return result
+
+
 def whitelist_mtime(path: str | os.PathLike[str] | None) -> float:
     """Return file mtime so changes can be picked up without a reload."""
     if not path:

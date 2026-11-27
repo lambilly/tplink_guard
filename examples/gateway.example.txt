@@ -1,0 +1,8 @@
+# TPLink Guard 网关 / 蓝牙代理名单示例
+# 两种条目：
+#   1) IP,名称                      —— 直接探测 IP 是否在线（网关等基础设施）
+#   2) 实体ID,名称,判定规则,期望值   —— 读取 HA 实体状态（蓝牙代理等其它集成）
+# 判定规则 eq = 状态等于期望值（默认）；ne = 状态不等于期望值；'#' 后为注释
+192.168.1.4, Qingping Gateway
+sensor.84469303d628_action, Bluetooth Gateway, ne, unavailable
+sensor.bluetooth_proxy_dm_ip_address, Front Door Proxy, eq, 192.168.1.31

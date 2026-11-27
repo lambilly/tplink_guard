@@ -23,11 +23,13 @@ import homeassistant.helpers.config_validation as cv
 from .api import RouterAuthError, RouterClient, RouterConnectionError
 from .const import (
     CONF_AP_PATH,
+    CONF_GATEWAY_PATH,
     CONF_MATCH_BY,
     CONF_MONITORED_PATH,
     CONF_WATCHLIST_PATH,
     CONF_WHITELIST_PATH,
     DEFAULT_AP_FILENAME,
+    DEFAULT_GATEWAY_FILENAME,
     DEFAULT_HOST,
     DEFAULT_LISTS_RELDIR,
     DEFAULT_MATCH_BY,
@@ -49,6 +51,7 @@ def _user_schema(
     default_phone: str,
     default_monitored: str,
     default_ap: str,
+    default_gateway: str,
 ) -> vol.Schema:
     return vol.Schema(
         {
@@ -69,6 +72,7 @@ def _user_schema(
                 CONF_MONITORED_PATH, default=default_monitored
             ): str,
             vol.Optional(CONF_AP_PATH, default=default_ap): str,
+            vol.Optional(CONF_GATEWAY_PATH, default=default_gateway): str,
             vol.Optional(CONF_MATCH_BY, default=DEFAULT_MATCH_BY): vol.In(MATCH_MODES),
         }
     )
@@ -98,6 +102,10 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
                 default=current.get(CONF_AP_PATH, ""),
             ): str,
             vol.Optional(
+                CONF_GATEWAY_PATH,
+                default=current.get(CONF_GATEWAY_PATH, ""),
+            ): str,
+            vol.Optional(
                 CONF_MATCH_BY,
                 default=current.get(CONF_MATCH_BY, DEFAULT_MATCH_BY),
             ): vol.In(MATCH_MODES),
@@ -118,6 +126,9 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
         default_phone = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_PHONE_FILENAME)
         default_monitored = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_MONITORED_FILENAME)
         default_ap = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_AP_FILENAME)
+        default_gateway = self.hass.config.path(
+            DEFAULT_LISTS_RELDIR, DEFAULT_GATEWAY_FILENAME
+        )
 
         if user_input is not None:
             await self.async_set_unique_id(
@@ -150,7 +161,11 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=_user_schema(
-                default_whitelist, default_phone, default_monitored, default_ap
+                default_whitelist,
+                default_phone,
+                default_monitored,
+                default_ap,
+                default_gateway,
             ),
             errors=errors,
         )
