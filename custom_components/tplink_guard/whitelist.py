@@ -244,6 +244,45 @@ def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     return result
 
 
+def load_aps(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
+    """Load the AP list.
+
+    Each line is ``IP, name`` (name optional; ``#`` starts a comment).
+    APs are probed directly over the LAN because AC-managed APs never
+    appear in the router's host_info table.
+    """
+    if not path:
+        return []
+    file_path = Path(path)
+    if not file_path.exists():
+        _LOGGER.warning("AP list file not found: %s", file_path)
+        return []
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    try:
+        lines = file_path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as err:
+        _LOGGER.error("Failed to read AP list %s: %s", file_path, err)
+        return []
+    for line in lines:
+        body = line.split("#", 1)[0].strip()
+        if not body:
+            continue
+        if "," in body:
+            parts = [part.strip() for part in body.split(",", 1)]
+        else:
+            parts = body.split(None, 1)
+        ip = parts[0].strip() if parts else ""
+        if not re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", ip) or ip in seen:
+            _LOGGER.debug("Skipping invalid AP line: %s", line)
+            continue
+        seen.add(ip)
+        result.append(
+            {"ip": ip, "name": parts[1].strip() if len(parts) > 1 else ip}
+        )
+    return result
+
+
 def whitelist_mtime(path: str | os.PathLike[str] | None) -> float:
     """Return file mtime so changes can be picked up without a reload."""
     if not path:

@@ -13,7 +13,8 @@
           "whitelist_path": "Whitelist file path",
           "watchlist_path": "Phone list file path",
           "match_by": "Match by",
-          "monitored_path": "Monitored terminals list file path"
+          "monitored_path": "Monitored terminals list file path",
+          "ap_path": "AP list file path"
         }
       }
     },
@@ -29,7 +30,7 @@
   "services": {
     "reload_whitelist": {
       "name": "Reload lists",
-      "description": "Re-read the configured whitelist, phone list and monitored terminals list files and refresh all entities."
+      "description": "Re-read the configured whitelist, phone list, monitored terminals list and AP list files and refresh all entities."
     }
   },
   "options": {
@@ -41,7 +42,8 @@
           "whitelist_path": "Whitelist file path",
           "watchlist_path": "Phone list file path",
           "match_by": "Match by",
-          "monitored_path": "Monitored terminals list file path"
+          "monitored_path": "Monitored terminals list file path",
+          "ap_path": "AP list file path"
         }
       }
     }

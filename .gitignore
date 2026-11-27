@@ -6,6 +6,8 @@ tplink_guard_monitored.txt
 whitelist.txt
 phone.txt
 monitored.txt
+ap.txt
+tplink_guard_ap.txt
 custom_components/tplink_guard/lists/*.txt
 *.bak
 *.bak-*
@@ -23,6 +25,7 @@ node-red/
 .workbuddy/
 *.token
 ha_token.txt
+_tg_creds_tmp.json
 
 # ===== Python 缓存 =====
 __pycache__/

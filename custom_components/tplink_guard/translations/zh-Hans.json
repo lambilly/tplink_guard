@@ -13,7 +13,8 @@
           "whitelist_path": "白名单文件路径",
           "watchlist_path": "手机名单文件路径",
           "match_by": "匹配方式",
-          "monitored_path": "监控终端名单文件路径"
+          "monitored_path": "监控终端名单文件路径",
+          "ap_path": "AP 名单文件路径"
         }
       }
     },
@@ -29,7 +30,7 @@
   "services": {
     "reload_whitelist": {
       "name": "重新加载名单",
-      "description": "立即从配置的文件路径重新读取白名单、手机名单与监控终端名单，并刷新所有实体状态。"
+      "description": "立即从配置的文件路径重新读取白名单、手机名单、监控终端名单与 AP 名单，并刷新所有实体状态。"
     }
   },
   "options": {
@@ -41,7 +42,8 @@
           "whitelist_path": "白名单文件路径",
           "watchlist_path": "手机名单文件路径",
           "match_by": "匹配方式",
-          "monitored_path": "监控终端名单文件路径"
+          "monitored_path": "监控终端名单文件路径",
+          "ap_path": "AP 名单文件路径"
         }
       }
     }

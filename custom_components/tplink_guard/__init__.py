@@ -18,10 +18,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import RouterClient
 from .const import (
+    CONF_AP_PATH,
     CONF_MATCH_BY,
     CONF_MONITORED_PATH,
     CONF_WATCHLIST_PATH,
     CONF_WHITELIST_PATH,
+    DEFAULT_AP_FILENAME,
     DEFAULT_LISTS_RELDIR,
     DEFAULT_MATCH_BY,
     DEFAULT_MONITORED_FILENAME,
@@ -72,6 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "tplink_guard_phone.txt": DEFAULT_PHONE_FILENAME,
         "tplink_guard_monitored.txt": DEFAULT_MONITORED_FILENAME,
         "tplink_guard_watchlist.txt": DEFAULT_PHONE_FILENAME,
+        "tplink_guard_ap.txt": DEFAULT_AP_FILENAME,
     }
 
     def _config_path(value: str | None) -> str | None:
@@ -83,7 +86,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         mapped = _LEGACY_NAMES.get(basename) or (
             basename
             if basename
-            in (DEFAULT_WHITELIST_FILENAME, DEFAULT_PHONE_FILENAME, DEFAULT_MONITORED_FILENAME)
+            in (
+                DEFAULT_WHITELIST_FILENAME,
+                DEFAULT_PHONE_FILENAME,
+                DEFAULT_MONITORED_FILENAME,
+                DEFAULT_AP_FILENAME,
+            )
             else None
         )
         if mapped:
@@ -114,6 +122,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 entry.data.get(CONF_MONITORED_PATH)
                 or hass.config.path(DEFAULT_MONITORED_FILENAME),
             )
+        ),
+        ap_path=_config_path(
+            options.get(CONF_AP_PATH, entry.data.get(CONF_AP_PATH))
+            or hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_AP_FILENAME)
         ),
     )
     await coordinator.async_config_entry_first_refresh()

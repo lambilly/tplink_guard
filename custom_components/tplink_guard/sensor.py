@@ -47,6 +47,9 @@ OBJECT_IDS: dict[str, str] = {
     # sensor.tplink_guard_guest_visit_count.
     "guest_visit": "guest_visit_count",
     "router_model": "router_model",
+    "ap_all_count": "ap_all_count",
+    "ap_online_count": "ap_online_count",
+    "ap_offline_count": "ap_offline_count",
 }
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
@@ -113,6 +116,21 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         key="router_model",
         name="Router Model",
         icon="mdi:chip",
+    ),
+    SensorEntityDescription(
+        key="ap_all_count",
+        name="AP All Count",
+        icon="mdi:access-point",
+    ),
+    SensorEntityDescription(
+        key="ap_online_count",
+        name="AP Online Count",
+        icon="mdi:wifi",
+    ),
+    SensorEntityDescription(
+        key="ap_offline_count",
+        name="AP Offline Count",
+        icon="mdi:wifi-off",
     ),
 )
 
@@ -296,6 +314,15 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
+        if self.entity_description.key in (
+            "ap_all_count",
+            "ap_online_count",
+            "ap_offline_count",
+        ):
+            return {
+                "aps": data.get("ap_devices", []),
+                ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
+            }
         if self.entity_description.key == "router_model":
             info = data.get("router_info") or {}
             return {
