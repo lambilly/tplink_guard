@@ -37,10 +37,11 @@ CHECKLIST_GROUPS: tuple[tuple[str, str, str], ...] = (
     ("server", CONF_SERVER_PATH, DEFAULT_SERVER_FILENAME),
     ("router", CONF_ROUTER_PATH, DEFAULT_ROUTER_FILENAME),
 )
-# Groups whose list stores MAC addresses and are matched against the
-# router's online host table (``MAC, 中文名, 英文名``) instead of HA entity
-# states.  Add a group name here to migrate it to MAC-based detection.
-MAC_CHECKLIST_GROUPS: tuple[str, ...] = ("asr",)
+# Groups driven by the MAC-first checklist loader: the first column decides
+# the strategy (MAC -> router online table, IP -> LAN probe, entity id -> HA
+# state). This keeps NAS/routers/switches reliable even when they are absent
+# from the router's own host table or expose no HA entity.
+MAC_CHECKLIST_GROUPS: tuple[str, ...] = ("asr", "server", "router")
 # List files live in a subfolder of the integration directory so /config
 # stays clean: /config/custom_components/tplink_guard/lists/
 DEFAULT_LISTS_RELDIR = "custom_components/tplink_guard/lists"

@@ -349,12 +349,20 @@ def load_checklist(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
 
 
 def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
-    """Load a MAC-based online-check list (e.g. the ASR terminal list).
+    """Load an online-check list whose first column decides the strategy.
 
-    Each line is ``MAC, 中文名, 英文名`` (``#`` starts a comment). Membership
-    is decided by comparing the MAC against the router's online host table,
-    so it does not depend on any third-party HA entity. Lines with an
-    invalid MAC are skipped; duplicate MACs are ignored.
+    Every line is ``key, 中文名, 英文名[, 期望值]`` (``#`` starts a comment).
+    ``key`` may be:
+
+    * a MAC address -> ``kind=mac``: matched against the router's online
+      host table (the reliable path used for ASR, NAS, etc.);
+    * an IPv4 address -> ``kind=probe``: probed directly over the LAN
+      (routers/switches never appear in the router's own host table);
+    * an HA entity id -> ``kind=state``: compared with ``期望值`` (default
+      ``home``) from the HA state machine (fallback for devices that expose
+      neither a usable MAC nor an IP).
+
+    Duplicate keys are ignored.
     """
     if not path:
         return []
@@ -374,20 +382,49 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
         if not body:
             continue
         parts = [part.strip() for part in body.split(",")]
-        mac = normalize_mac(parts[0])
-        if len(mac) != 12 or mac in seen:
-            _LOGGER.debug("Skipping invalid MAC checklist line: %s", line)
+        key = parts[0]
+        if not key or key in seen:
             continue
-        seen.add(mac)
-        result.append(
-            {
+        name_cn = parts[1] if len(parts) > 1 and parts[1] else key
+        name_en = parts[2] if len(parts) > 2 and parts[2] else ""
+        expected = parts[3] if len(parts) > 3 and parts[3] else "home"
+        mac = normalize_mac(key)
+        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", key):
+            item = {
+                "kind": "probe",
+                "target": key,
+                "entity_id": key,
+                "name_cn": name_cn,
+                "name_en": name_en,
+                "op": "eq",
+                "expected": "",
+            }
+        elif len(mac) == 12 and mac.upper() == key.replace("-", "").replace(":", "").upper():
+            item = {
                 "kind": "mac",
                 "target": mac,
                 "mac": mac,
-                "name_cn": parts[1] if len(parts) > 1 and parts[1] else mac,
-                "name_en": parts[2] if len(parts) > 2 and parts[2] else "",
+                "entity_id": name_en or mac,
+                "name_cn": name_cn,
+                "name_en": name_en,
+                "op": "eq",
+                "expected": "",
             }
-        )
+        elif "." in key:
+            item = {
+                "kind": "state",
+                "target": key,
+                "entity_id": key,
+                "name_cn": name_cn,
+                "name_en": name_en,
+                "op": "eq",
+                "expected": expected,
+            }
+        else:
+            _LOGGER.debug("Skipping invalid checklist line: %s", line)
+            continue
+        seen.add(key)
+        result.append(item)
     return result
 
 

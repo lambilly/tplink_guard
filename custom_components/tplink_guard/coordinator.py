@@ -218,14 +218,18 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             f"{group}_devices": devices,
         }
 
-    def _async_mac_checklist_snapshot(
+    async def _async_mac_checklist_snapshot(
         self, group: str, devices: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Match a MAC-based list against the router's online host table.
+        """Resolve a MAC-driven checklist against the best available source.
 
-        Unlike entity-state checklists this needs the freshly fetched router
-        data, so it is computed after ``devices`` is built. A listed MAC that
-        appears in the online host table is online; otherwise offline.
+        * ``mac`` entries are matched against the router's online host table;
+        * ``probe`` entries are pinged over the LAN (routers/switches never
+          appear in their own host table);
+        * ``state`` entries fall back to an HA entity state.
+
+        Computed after ``devices`` is built because MAC matching needs the
+        fresh router snapshot.
         """
         entries = self.checklists.get(group) or []
         if not entries:
@@ -240,21 +244,53 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for device in devices
             if device.get("mac")
         }
+        # Probe IP entries concurrently to keep the refresh fast.
+        probe_indexes = [
+            index
+            for index, item in enumerate(entries)
+            if item.get("kind") == "probe"
+        ]
+        probe_results = await asyncio.gather(
+            *(
+                async_probe_ap(
+                    str(entries[index].get("target") or ""),
+                    timeout=AP_PROBE_TIMEOUT,
+                )
+                for index in probe_indexes
+            ),
+            return_exceptions=True,
+        )
+        probe_online = {
+            index: result is True
+            for index, result in zip(probe_indexes, probe_results)
+        }
+
         result_devices: list[dict[str, Any]] = []
-        for item in entries:
+        for index, item in enumerate(entries):
+            kind = item.get("kind")
             mac = item.get("mac") or ""
-            matched = by_mac.get(mac)
-            online = matched is not None
             name_cn = item.get("name_cn") or ""
             name_en = item.get("name_en") or ""
+            matched: dict[str, Any] | None = None
+            if kind == "mac":
+                matched = by_mac.get(mac)
+                online = matched is not None
+            elif kind == "probe":
+                online = probe_online.get(index, False)
+            else:  # state
+                entity = self.hass.states.get(item.get("entity_id") or "")
+                state = str(entity.state) if entity is not None else ""
+                online = entity is not None and state == item.get("expected")
             result_devices.append(
                 {
                     "mac": mac,
-                    "name": name_cn or name_en or mac,
+                    "name": name_cn or name_en or item.get("target", ""),
                     "name_cn": name_cn,
                     "name_en": name_en,
-                    "entity_id": name_en or mac,
-                    "ip": str(matched.get("ip") or "") if matched else "",
+                    "entity_id": item.get("entity_id") or "",
+                    "ip": str(matched.get("ip") or "")
+                    if matched
+                    else (item.get("target") if kind == "probe" else ""),
                     "hostname": str(matched.get("hostname") or "") if matched else "",
                     "state": "online" if online else "offline",
                     "online": online,
@@ -365,7 +401,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # against the router's online host table just built.
         mac_checklist_data: dict[str, Any] = {}
         for name in MAC_CHECKLIST_GROUPS:
-            mac_checklist_data.update(self._async_mac_checklist_snapshot(name, devices))
+            mac_checklist_data.update(await self._async_mac_checklist_snapshot(name, devices))
 
         unknown = [device for device in devices if not device["known"]]
         phone_online = [device for device in devices if device["watched"]]
