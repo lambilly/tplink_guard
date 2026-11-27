@@ -4,11 +4,13 @@ Each line of the device list file (``lists/device.txt`` inside the
 integration folder) defines one terminal that gets its own device_tracker
 entity showing whether it is online (home) or offline (not_home).
 
-Line format: ``MAC, entity_name, display_name``. The second field builds
-the entity id (``device_tracker.tplink_guard_<entity_name>``); the third
-field is the friendly/display name (Chinese allowed). If the display name
-is missing the entity name is shown; if the entity name is missing it is
-derived from the router hostname (falling back to the MAC).
+Line format: ``MAC, IP, display_name, entity_name``. Column 2 (IP) is a
+reserved slot and is normally empty (``MAC,,display_name,entity_name``).
+Column 3 is the friendly/display name (Chinese allowed); column 4 builds
+the entity id (``device_tracker.tplink_guard_<entity_name>``). If the
+entity name is missing it is derived from the router hostname (falling
+back to the MAC). The legacy ``MAC, entity_name, display_name`` form is
+still accepted.
 """
 
 from __future__ import annotations

@@ -120,6 +120,8 @@ def _parse_whitelist_note(comment: str) -> tuple[str, str]:
 def _read_plain(path: Path) -> Whitelist:
     result = Whitelist()
     for line in path.read_text(encoding="utf-8-sig").splitlines():
+        # New format: ``MAC, IP, #名称`` — the IP sits before ``#``.
+        # Legacy format: ``MAC # 名称,IP`` — IP extracted from the comment.
         if "#" in line:
             value, comment = line.split("#", 1)
             value = value.strip()
@@ -129,10 +131,21 @@ def _read_plain(path: Path) -> Whitelist:
             comment = ""
         if not value:
             continue
-        if re.fullmatch(r"[0-9a-fA-F:-]{12,17}", value):
-            mac = normalize_mac(value)
+
+        ip = ""
+        mac_value = value
+        # Split the pre-# part into MAC, IP columns when present.
+        value_fields = [field.strip() for field in value.split(",")]
+        if len(value_fields) >= 2 and value_fields[0]:
+            mac_value = value_fields[0]
+            if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", value_fields[1]):
+                ip = value_fields[1]
+
+        if re.fullmatch(r"[0-9a-fA-F:-]{12,17}", mac_value):
+            mac = normalize_mac(mac_value)
             if len(mac) == 12:
-                name, ip = _parse_whitelist_note(comment)
+                name, legacy_ip = _parse_whitelist_note(comment)
+                ip = ip or legacy_ip
                 if ip:
                     result.ips.add(ip)
                 result.macs.add(mac)
@@ -145,8 +158,8 @@ def _read_plain(path: Path) -> Whitelist:
                     # entries can be split into name/nickname/device.
                     "note": comment,
                 }
-        elif re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", value):
-            result.ips.add(value)
+        elif re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", mac_value):
+            result.ips.add(mac_value)
     return result
 
 
@@ -200,9 +213,10 @@ def load_whitelist(path: str | os.PathLike[str] | None) -> Whitelist:
 def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     """Load the device-terminal list (``lists/device.txt``).
 
-    Each line defines a terminal that gets its own device_tracker entity:
-    ``MAC, entity_id, 备注``. The second field decides the entity id and
-    name; the third field is a documentation-only note and is ignored.
+    Each line is ``MAC, IP, 显示名, 实体名``. Column 2 (IP) is reserved and
+    normally empty (``MAC,,显示名,实体名``); column 3 is the friendly display
+    name, column 4 the entity id used for ``device_tracker.tplink_guard_<id>``.
+    The legacy ``MAC,实体名,显示名`` 3-column form is still accepted.
     A missing entity id is auto-filled later from the router hostname.
     Comment lines start with ``#``. The function name is kept for API
     stability; the user-facing file name is now ``device.txt``.
@@ -225,8 +239,10 @@ def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
         if not text or text.startswith("#"):
             continue
         body = text.split("#", 1)[0]
-        fields = [field.strip() for field in body.split(",") if field.strip()]
-        if not fields:
+        # Keep empty fields so the reserved IP column (MAC,,name,id) does
+        # not shift the display name / entity id into the wrong slots.
+        fields = [field.strip() for field in body.split(",")]
+        if not fields or not any(fields):
             continue
         mac = normalize_mac(fields[0])
         if len(mac) != 12:
@@ -235,13 +251,15 @@ def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
         if mac in seen:
             continue
         seen.add(mac)
-        result.append(
-            {
-                "mac": mac,
-                "entity_id": fields[1] if len(fields) > 1 else "",
-                "name": fields[2] if len(fields) > 2 else "",
-            }
-        )
+        # New 4-column form: MAC, IP, 显示名, 实体名 (IP column reserved).
+        # Legacy 3-column form: MAC, 实体名, 显示名.
+        if len(fields) >= 4:
+            name = fields[2]
+            entity_id = fields[3]
+        else:
+            entity_id = fields[1] if len(fields) > 1 else ""
+            name = fields[2] if len(fields) > 2 else ""
+        result.append({"mac": mac, "entity_id": entity_id, "name": name})
     return result
 
 
@@ -350,14 +368,17 @@ def load_checklist(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
 
 
 def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
-    """Load an online-check list whose first column is a MAC or an IP.
+    """Load an online-check list whose columns are MAC, IP, 中文名, 英文名.
 
-    Every line is ``标识,中文名,英文名`` (``#`` starts a comment):
+    Every data line is ``MAC,IP,中文名,英文名`` (``#`` starts a comment):
 
-    * a MAC address -> ``kind=mac``: matched against the router's online
-      host table (the reliable path used for ASR, NAS, etc.);
-    * an IPv4 address -> ``kind=probe``: probed directly over the LAN
-      (routers/switches never appear in the router's own host table).
+    * ``MAC`` is matched against the router's online host table (the
+      reliable path used for ASR, NAS, gateways, etc.);
+    * ``IP`` is an optional direct-probe address. Dynamic/absent IPs use an
+      empty field (``MAC,,中文名,英文名``). When present, a live IP probe
+      also resolves the device even if the router mislabels its state.
+    * the legacy 3-column form ``标识,中文名,英文名`` is still accepted
+      (``标识`` being a MAC or an IP).
 
     No HA entity state is consulted. Duplicate keys are ignored.
     """
@@ -382,8 +403,20 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
         key = parts[0]
         if not key or key in seen:
             continue
-        name_cn = parts[1] if len(parts) > 1 and parts[1] else key
-        name_en = parts[2] if len(parts) > 2 and parts[2] else ""
+
+        # New 4-column form: MAC, IP, 中文名, 英文名. When the second column
+        # is an IPv4 (or the row has 4 columns with an empty IP), names start
+        # at column 3; otherwise fall back to the legacy 3-column layout.
+        ip = ""
+        if len(parts) >= 4:
+            if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", parts[1]):
+                ip = parts[1]
+            name_cn = parts[2] or key
+            name_en = parts[3]
+        else:
+            name_cn = parts[1] if len(parts) > 1 and parts[1] else key
+            name_en = parts[2] if len(parts) > 2 and parts[2] else ""
+
         mac = normalize_mac(key)
         if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", key):
             item = {
@@ -392,6 +425,7 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
                 "entity_id": key,
                 "name_cn": name_cn,
                 "name_en": name_en,
+                "probe_ip": key,
                 "op": "eq",
                 "expected": "",
             }
@@ -403,6 +437,7 @@ def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str,
                 "entity_id": name_en or mac,
                 "name_cn": name_cn,
                 "name_en": name_en,
+                "probe_ip": ip,
                 "op": "eq",
                 "expected": "",
             }

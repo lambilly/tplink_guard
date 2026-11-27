@@ -1,6 +1,6 @@
-# TPLink Guard ASR 语音终端名单：每行格式 MAC,中文名,英文名
-# MAC 比对 TPLINK 在线终端表判断在线/离线，不依赖 HA 实体状态
+# TPLink Guard asr 名单：每行格式 MAC,IP,中文名,英文名
+# IP 动态或为空时用 ,, 留空（如 MAC,,中文名,英文名）；MAC 比对 TPLINK 在线终端表，IP 额外做 LAN 探测
 # 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
-48-55-19-64-F8-97, 客厅小黑, keting_xiaohei
-84-CC-A8-98-01-F6, 主卧小黑, zhuwo_xiaohei
-68-C6-3A-F7-65-C3, 次卧小黑, ciwo_xiaohei
+48-55-19-64-F8-97,,客厅小黑, keting_xiaohei
+84-CC-A8-98-01-F6,,主卧小黑, zhuwo_xiaohei
+68-C6-3A-F7-65-C3,,次卧小黑, ciwo_xiaohei

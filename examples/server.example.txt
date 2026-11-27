@@ -1,7 +1,6 @@
-# TPLink Guard 服务器 / 主机名单：每行格式 标识,中文名,英文名
-#   MAC -> 比对 TPLINK 在线终端表（推荐，换 IP 也能识别）
-#   IP  -> 直接探测该 IP（不在 TPLINK 终端表的设备）
+# TPLink Guard server 名单：每行格式 MAC,IP,中文名,英文名
+# IP 动态或为空时用 ,, 留空（如 MAC,,中文名,英文名）；MAC 比对 TPLINK 在线终端表，IP 额外做 LAN 探测
 # 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
-00-E0-B4-1D-D3-1E, 群晖NAS, lamnas_ws
-F4-B5-20-4F-26-AD, 飞牛NAS, fn_nas
-192.168.1.77, Daphile  Music Server, daphile_music
+00-E0-B4-1D-D3-1E,,群晖NAS, lamnas_ws
+F4-B5-20-4F-26-AD,,飞牛NAS, fn_nas
+192.168.1.77, 192.168.1.77, Daphile  Music Server, daphile_music

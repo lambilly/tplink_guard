@@ -221,11 +221,17 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_mac_checklist_snapshot(
         self, group: str, devices: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Resolve an IP/MAC checklist against the router snapshot or LAN.
+        """Resolve a MAC/IP checklist against the router snapshot or LAN.
 
-        * ``mac`` entries are matched against the router's online host table;
-        * ``probe`` entries are pinged over the LAN (routers/switches never
-          appear in their own host table).
+        Rows are ``MAC,IP,中文名,英文名``. A row is online when either:
+
+        * its MAC is in the router's online host table, or
+        * its optional IP answers a LAN probe.
+
+        The IP probe is a fallback that also fixes routers mislabelling a
+        live device as ``state=offline``. ``probe`` rows (IP as the first
+        column, e.g. the main router/switch) are probed directly because they
+        never appear in their own host table.
 
         No HA entity state is consulted. Computed after ``devices`` is built
         because MAC matching needs the fresh router snapshot.
@@ -243,16 +249,16 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for device in devices
             if device.get("mac")
         }
-        # Probe IP entries concurrently to keep the refresh fast.
+        # Probe every row that carries an IP (or is IP-only) concurrently.
         probe_indexes = [
             index
             for index, item in enumerate(entries)
-            if item.get("kind") == "probe"
+            if item.get("probe_ip")
         ]
         probe_results = await asyncio.gather(
             *(
                 async_probe_ap(
-                    str(entries[index].get("target") or ""),
+                    str(entries[index].get("probe_ip") or ""),
                     timeout=AP_PROBE_TIMEOUT,
                 )
                 for index in probe_indexes
@@ -271,11 +277,12 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name_cn = item.get("name_cn") or ""
             name_en = item.get("name_en") or ""
             matched: dict[str, Any] | None = None
+            ip_online = probe_online.get(index, False)
             if kind == "mac":
                 matched = by_mac.get(mac)
-                online = matched is not None
+                online = matched is not None or ip_online
             elif kind == "probe":
-                online = probe_online.get(index, False)
+                online = ip_online
             else:
                 # Legacy entity-id rows are no longer loaded from the lists.
                 online = False

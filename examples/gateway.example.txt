@@ -1,7 +1,6 @@
-# TPLink Guard 网关 / 蓝牙代理名单：每行格式 标识,中文名,英文名
-#   MAC -> 比对 TPLINK 在线终端表（推荐，换 IP 也能识别）
-#   IP  -> 直接探测该 IP（不在 TPLINK 终端表里的网关）
+# TPLink Guard gateway 名单：每行格式 MAC,IP,中文名,英文名
+# IP 动态或为空时用 ,, 留空（如 MAC,,中文名,英文名）；MAC 比对 TPLINK 在线终端表，IP 额外做 LAN 探测
 # 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
-1C-EA-AC-35-A3-89, Qingping Gateway, qingping_gateway
-192.168.1.7, Multi-Mode Gateway, duomo_gateway
-CC-4D-75-9A-B0-A1, Dual-Band Gateway, shuangmo_gateway
+1C-EA-AC-35-A3-89,,Qingping Gateway, qingping_gateway
+192.168.1.7, 192.168.1.7, Multi-Mode Gateway, duomo_gateway
+CC-4D-75-9A-B0-A1,,Dual-Band Gateway, shuangmo_gateway

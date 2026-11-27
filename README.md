@@ -13,12 +13,12 @@
 - 使用路由器原生 SLP JSON 接口（`stok` 登录 + `/ds` 数据接口），账号 / 密码 / 端口可配置
 - 刷新周期可配置（默认 60 秒，最小 5 秒）
 - 读取 `host_management/host_info` 在线终端表；另读取 `dhcpd/dhcp_static` 统计静态分配数
-- **白名单 TXT**：每行格式 `MAC # 字段1,字段2,...`（逗号区隔，IP 不加括号），不使用引号
-- **客人手机名单 TXT**（`lists/guestphone.txt`，原手机名单 / 关注名单）：每行格式与白名单相同，但只有同时存在于白名单中的设备才算客人手机终端
+- **白名单 TXT**：每行格式 `MAC, IP, #名称`，IP 字段可选（动态 / 无 IP 留空），`#` 后为设备名称；不使用引号
+- **客人手机名单 TXT**（`lists/guestphone.txt`，原手机名单 / 关注名单）：格式为 `MAC # 姓名,昵称,设备名`，但只有同时存在于白名单中的设备才算客人手机终端
 - 名单备注字段为 `姓名,昵称,设备名`，解析后用于来访统计的在家 / 外出列表显示；统计并入 `guest_visit_count`，不再单独生成手机在线数实体
-- **设备终端名单 TXT**（`lists/device.txt`）：每行 `MAC,实体名,显示名`，第二字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`），第三字段为中文显示名（可省略）
+- **设备终端名单 TXT**（`lists/device.txt`）：每行 `MAC,IP,显示名,实体名`，第二列 IP 预留暂空（`MAC,,显示名,实体名`），第三字段为中文显示名，第四字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`）
 - **AP 名单 TXT**（`lists/ap.txt`）：每行 `IP,名称`，直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），生成 AP Online Count 一个实体，总数 / 离线数以属性提供
-- **分组在线名单 TXT**（`lists/gateway.txt` / `lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：统一格式 `标识,中文名,英文名`，第一列只接受 MAC 或 IP：MAC 比对 TPLINK 在线终端表，IP 直接探测。分别生成 Gateway / ASR / Server / Router Online Count，增删终端只改对应 TXT 一行，文件变化自动重载；不依赖任何 HA 实体状态或 `iphonedetect` 的 device_tracker
+- **分组在线名单 TXT**（`lists/gateway.txt` / `lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：统一格式 `MAC,IP,中文名,英文名`，IP 动态或为空时用 `,,` 跳过（如 `MAC,,中文名,英文名`）。MAC 比对 TPLINK 在线终端表，IP 额外做 LAN 探测（任一命中即在线，可修正路由器把在线设备误标 offline）。分别生成 Gateway / ASR / Server / Router Online Count，增删终端只改对应 TXT 一行，文件变化自动重载；不依赖任何 HA 实体状态或 `iphonedetect` 的 device_tracker
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -57,9 +57,9 @@
 
 | 实体 ID | 英文名 | 含义 |
 |---|---|---|
-| `sensor.tplink_guard_all_online_count` | Online All Count | 当前在线终端总数；白名单 / 静态分配 / 陌生终端三组数据作为属性挂在此实体上：`whitelist_*`（总数、在线数、离线数与三组列表）、`static_ip_count / static_ip_enabled / static_ip_limit`、`unknown_online_count / unknown_online_list` |
+| `sensor.tplink_guard_all_online_count` | All Online Count | 当前在线终端总数（单位「个」）；白名单 / 静态分配 / 陌生终端三组数据作为属性挂在此实体上：`whitelist_*`（总数、在线数、离线数与三组列表）、`static_ip_count / static_ip_enabled / static_ip_limit`、`unknown_online_count / unknown_online_list` |
 | `sensor.tplink_guard_guest_visit_count` | Guest Visit Count | 客人来访统计：state = 在家人数（单位「人」），手机名单的在线 / 离线统计已并入此实体，9 个属性 `guest_all_count / guest_all_list / guest_home_count / guest_home_list / guest_nick_list / guest_out_count / guest_out_list / guest_detail / update_time` |
-| `sensor.tplink_guard_device_online_count` | Device Online Count | 设备终端名单在线数；总数 / 离线数与列表作为属性 `device_all_count` / `device_offline_count` / `device_all_list` / `device_online_list` / `device_offline_list` 提供 |
+| `sensor.tplink_guard_device_online_count` | Device Online Count | 设备终端名单在线数（单位「个」）；总数 / 离线数与列表作为属性 `device_all_count` / `device_offline_count` / `device_all_list` / `device_online_list` / `device_offline_list` 提供 |
 | `sensor.tplink_guard_firmware_model` | Firmware Model | 路由设备型号（如 TL-R498GPM-AC 3.0，属性含硬件 / 固件版本、设备 MAC）；内部数据键仍为 `router_model`，实体 ID 与名称已改为 Firmware Model |
 | `sensor.tplink_guard_ap_online_count` | AP Online Count | 当前在线 AP 数；总数与离线数作为属性 `ap_all_count` / `ap_offline_count` 提供 |
 | `sensor.tplink_guard_gateway_online_count` | Gateway Online Count | 网关 / 蓝牙代理在线数（兼容旧 NR 实体的 7 个属性与单位「台」） |
@@ -78,15 +78,15 @@
 
 ## 名单格式（无引号，逗号区隔）
 
-白名单与客人手机名单每行格式统一为 `MAC # 字段1,字段2,...`，字段用逗号区隔，IP 不加括号。
+白名单格式为 `MAC, IP, #名称`（IP 可选），客人手机名单格式为 `MAC # 姓名,昵称,设备名`；字段用逗号区隔，IP 不加括号。
 
-白名单示例（字段：名称,IP，IP 可选）：
+白名单示例（格式 `MAC, IP, #名称`，IP 可选）：
 
 ```
 # 这是注释
-4C-C6-4C-EC-0C-3B # 网关,192.168.1.6
-20-BD-1D-D7-85-57 # 台式机,192.168.1.10
-AA-BB-CC-DD-EE-01 # 只写名称也可以
+4C-C6-4C-EC-0C-3B, 192.168.1.6, #网关
+20-BD-1D-D7-85-57, 192.168.1.10, #台式机
+AA-BB-CC-DD-EE-01, , #只写名称也可以
 ```
 
 客人手机名单示例（字段：姓名,昵称,设备名）：
@@ -97,17 +97,17 @@ AA-BB-CC-DD-EE-01 # 张三,三哥,Phone-A
 
 不在白名单中的设备即使写入客人手机名单也不会生效。名单改完会自动重载，无需重启 HA。
 
-设备终端名单示例（字段：MAC,实体名,显示名）：
+设备终端名单示例（格式 `MAC,IP,显示名,实体名`，IP 列暂留空）：
 
 ```
-20-BD-1D-D7-85-57, hui_pu_dian_nao, 惠普电脑
-AA-BB-CC-DD-EE-01, dev_a, 设备A
-AA-BB-CC-DD-EE-02
+20-BD-1D-D7-85-57,, 惠普电脑, hui_pu_dian_nao
+AA-BB-CC-DD-EE-01,, 设备A, dev_a
 ```
 
-- 第二字段生成**实体 ID**：`hui_pu_dian_nao` → `device_tracker.tplink_guard_hui_pu_dian_nao`；可带或不带 `device_tracker.` 前缀填写
-- 第三字段是**前端显示名**（可用中文），与实体 ID 相互独立——集成会同时钉住 ID 与显示名，HA 2026.11 不会重生成
-- 省略 `显示名` 时显示实体名；省略 `实体名` 时按路由器主机名自动生成
+- 第二字段为预留的 **IP 列**（动态 / 无 IP 留空，写成 `MAC,,显示名,实体名`）
+- 第三字段是**前端显示名**（可用中文），第四字段生成**实体 ID**：`hui_pu_dian_nao` → `device_tracker.tplink_guard_hui_pu_dian_nao`；可带或不带 `device_tracker.` 前缀填写
+- 显示名与实体 ID 相互独立——集成会同时钉住 ID 与显示名，HA 2026.11 不会重生成
+- 省略 `实体名` 时按路由器主机名自动生成
 - 名单内每台终端生成一个 `device_tracker` 实体：在线为 `home`，离线为 `not_home`，状态未变化时持续时间计时不会重置，属性含 `mac / ip / hostname / last_update`
 
 AP 名单示例（字段：`IP,名称`）：
@@ -123,21 +123,23 @@ AP 名单示例（字段：`IP,名称`）：
 - 只保留 `sensor.tplink_guard_ap_online_count` 一个实体，状态为在线 AP 数、单位「个」；总数与离线数作为属性提供：`ap_all_count / ap_all_list / ap_online_count / ap_online_list / ap_offline_count / ap_offline_list / update_time`（列表以 `｜` 分隔，离线为空时显示「无」），不再输出 `aps` 数组
 - 名称可省略（省略时用 IP 显示）；`#` 后为注释；名单变化自动重载，也可调用 `tplink_guard.reload_whitelist`
 
-网关 / ASR / 服务器 / 路由器共用同一套「第一列决定判定方式」的名单格式 `标识,中文名,英文名`，文件分别位于 `lists/gateway.txt`、`lists/asr.txt`、`lists/server.txt`、`lists/router.txt`：
+网关 / ASR / 服务器 / 路由器共用同一套名单格式 `MAC,IP,中文名,英文名`，文件分别位于 `lists/gateway.txt`、`lists/asr.txt`、`lists/server.txt`、`lists/router.txt`：
 
 ```
 # gateway.txt
-1C-EA-AC-35-A3-89, 青萍网关, qingping_gateway   # MAC -> 比对 TPLINK 在线终端表
-192.168.1.7, 多模网关, duomo_gateway             # IP -> 直接探测
+1C-EA-AC-35-A3-89, 192.168.1.4, 青萍网关, qingping_gateway
+18-C2-3C-1C-5B-5F, 192.168.1.7, 多模网关, duomo_gateway
+F4-CF-A2-E5-D5-B1,, 复刻小乐, fuke_xiaole        # IP 动态/空，用 ,, 留空
 # router.txt
-192.168.1.1, 主路由, main_router                # IP -> 直接探测（主路由不在自己终端表）
-94-83-C4-53-EC-0C, 旁路由, istoreos             # MAC -> 比对 TPLINK 在线终端表
+, 192.168.1.1, 主路由, main_router               # 无 MAC、只有 IP
+94-83-C4-53-EC-0C, 192.168.1.2, 旁路由, istoreos
 ```
 
 判定规则：
-- **MAC**（12 位十六进制）：比对 TPLINK 在线终端表，设备换 IP 也能正确识别，最可靠
-- **IP**（IPv4）：直接探测该 IP，用于主路由 / 交换机 / 路由器表中标记 offline 但实际在线的设备
-- 名单只接受 MAC 或 IP，不再读取 HA 实体状态；非 IP/MAC 的行会被忽略。名单变化自动重载，也可调用 `tplink_guard.reload_whitelist`
+- **MAC**（12 位十六进制）：比对 TPLINK 在线终端表，设备换 IP 也能正确识别
+- **IP**（IPv4）：直接做 LAN 探测（先 ICMP、失败回退 TCP 80/443/22）。IP 列非空时作为补充判定，可修正路由器把在线设备误标 `state=offline` 的情况（如多模网关）；MAC 命中或 IP 探测通，任一成立即在线
+- 第一列本身是 IPv4 的行（如主路由 / 交换机）直接探测该 IP，因为它们不在自己的终端表
+- IP 动态或为空时用 `,,` 留空，此时仅靠 MAC 比对；名单只接受 MAC 或 IP，不读取 HA 实体状态。名单变化自动重载，也可调用 `tplink_guard.reload_whitelist`
 - 四个在线数实体各复刻旧 NR 实体的 7 个属性（`<组名>_all_count / _all_list / _online_count / _online_list / _offline_count / _offline_list / update_time`），不再输出 `<组名>_devices` 明细
 - 单位为「台」「个」「台」「台」，与旧 NR 实体一致；新增设备只需在对应 TXT 增加一行，无需改代码或重启
 

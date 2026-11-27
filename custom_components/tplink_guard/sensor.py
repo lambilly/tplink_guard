@@ -239,7 +239,10 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             name="TPLink Guard",
             manufacturer="TP-Link",
         )
-        if description.key == "ap_online_count":
+        if description.key in ("online_count", "monitored_online_count"):
+            # All Online Count / Device Online Count count terminals.
+            self._attr_native_unit_of_measurement = "个"
+        elif description.key == "ap_online_count":
             # Match the legacy Node-RED sensor's "个" unit so dashboards
             # can switch entity ids without changing their formatting.
             self._attr_native_unit_of_measurement = "个"
