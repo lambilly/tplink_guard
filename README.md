@@ -125,7 +125,7 @@ AP 名单示例（字段：`IP,名称`）：
 
 - AP 由路由器 AC 管理，不会出现在 `host_info` 在线终端表里，因此集成直接对名单中的 IP 做在线探测（先 ICMP，失败时尝试 TCP 80/443/22）
 - 探测与路由器 Web 登录会话无关：即使集成处于「礼让模式」（用户正在登录路由器 Web 界面），AP 状态仍会正常刷新
-- 三个计数实体的 `aps` 属性包含每台 AP 的 `ip / name / online`，可直接在自动化中判断具体哪台 AP 离线
+- 三个计数实体同时暴露 `aps` 数组（每台 AP 的 `ip / name / online`）与旧 Node-RED 传感器 `sensor.ap_online_count` 的兼容属性：`ap_all_count / ap_all_list / ap_online_count / ap_online_list / ap_offline_count / ap_offline_list / update_time`，单位同为「个」，可直接替换旧的 NR 实体（列表以 `｜` 分隔，离线为空时显示「无」）
 - 名称可省略（省略时用 IP 显示）；`#` 后为注释；名单变化自动重载，也可调用 `tplink_guard.reload_whitelist`
 
 ## 给自动化 / Node-RED 使用

@@ -125,7 +125,7 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
         key="ap_online_count",
         name="AP Online Count",
-        icon="mdi:wifi",
+        icon="mdi:wifi-marker",
     ),
     SensorEntityDescription(
         key="ap_offline_count",
@@ -270,6 +270,14 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             name="TPLink Guard",
             manufacturer="TP-Link",
         )
+        if description.key in (
+            "ap_all_count",
+            "ap_online_count",
+            "ap_offline_count",
+        ):
+            # Match the legacy Node-RED sensor's "个" unit so dashboards
+            # can switch entity ids without changing their formatting.
+            self._attr_native_unit_of_measurement = "个"
         if description.key == "guest_visit":
             # Attached to the TPLink Guard device; entity id follows the
             # natural prefixed scheme (sensor.tplink_guard_guest_visit_count,
@@ -319,8 +327,22 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             "ap_online_count",
             "ap_offline_count",
         ):
+            # Legacy Node-RED produced sensor.ap_online_count with these
+            # attributes; keep them identical so dashboards can switch
+            # entity ids without changing any template logic.
+            aps = data.get("ap_devices") or []
+            names = [str(ap.get("name") or ap.get("ip") or "") for ap in aps]
+            online = [name for ap, name in zip(aps, names) if ap.get("online")]
+            offline = [name for ap, name in zip(aps, names) if not ap.get("online")]
             return {
-                "aps": data.get("ap_devices", []),
+                "aps": aps,
+                "ap_all_count": len(aps),
+                "ap_all_list": "｜".join(names) or "无",
+                "ap_online_count": len(online),
+                "ap_online_list": "｜".join(online) or "无",
+                "ap_offline_count": len(offline),
+                "ap_offline_list": "｜".join(offline) or "无",
+                "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }
         if self.entity_description.key == "router_model":
