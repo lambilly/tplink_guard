@@ -17,6 +17,9 @@
         title: 主路由发现陌生终端
         message: >-
           陌生终端 IP：{{ state_attr('sensor.tplink_guard_all_online_count', 'unknown_online_list') }}
+          {% for d in state_attr('sensor.tplink_guard_all_online_count', 'unknown_online_detail') or [] %}
+          {{ d.hostname or '未命名' }} / {{ d.ap_name }} / {{ d.ip }}
+          {% endfor %}
 
 - alias: 主路由陌生终端已离线
   description: 陌生终端全部离线后清除通知

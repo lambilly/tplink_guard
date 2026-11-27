@@ -441,10 +441,28 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 for device in unknown_devices
                 if device.get("ip")
             ]
+            # Structured rows for notifications. Node-RED reads this to
+            # report device name / AP / SSID / first-seen time, not just IP.
+            unknown_detail = [
+                {
+                    "mac": str(device.get("mac") or ""),
+                    "ip": str(device.get("ip") or ""),
+                    "hostname": str(device.get("hostname") or ""),
+                    "ssid": str(device.get("ssid") or ""),
+                    "ap_name": str(device.get("ap_name") or ""),
+                    "connect_date": str(device.get("connect_date") or ""),
+                    "connect_time": str(device.get("connect_time") or ""),
+                    "rssi": str(device.get("rssi") or ""),
+                    "freq_name": str(device.get("freq_name") or ""),
+                    "type": str(device.get("type") or ""),
+                }
+                for device in unknown_devices
+            ]
             attrs.update(
                 {
                     "unknown_online_count": data.get("unknown_count"),
                     "unknown_online_list": ", ".join(unknown_ips) if unknown_ips else "none",
+                    "unknown_online_detail": unknown_detail,
                 }
             )
             attrs["update_time"] = _format_time(data.get(ATTR_LAST_UPDATE))

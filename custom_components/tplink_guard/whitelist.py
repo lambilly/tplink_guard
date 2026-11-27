@@ -500,7 +500,11 @@ def whitelist_mtime(path: str | os.PathLike[str] | None) -> float:
 def summarize_device(
     host: dict[str, Any], known: bool, display_name: str | None
 ) -> dict[str, Any]:
-    """Normalize a router host row into a stable device dictionary."""
+    """Normalize a router host row into a stable device dictionary.
+
+    Keeps the router's LAN context (SSID / AP / first-seen time / signal)
+    so notifications about unknown terminals can say more than an IP.
+    """
     mac = normalize_mac(host.get("mac") or host.get("macaddr") or "")
     return {
         "ip": str(host.get("ip") or ""),
@@ -511,4 +515,13 @@ def summarize_device(
         "state": str(host.get("state") or ""),
         "type": str(host.get("type") or ""),
         "known": known,
+        # LAN context from host_info — used by unknown_online_detail.
+        "ssid": str(host.get("ssid") or ""),
+        "ap_name": str(host.get("ap_name") or ""),
+        "connect_date": str(host.get("connect_date") or ""),
+        "connect_time": str(host.get("connect_time") or ""),
+        "rssi": str(host.get("rssi") or ""),
+        "freq_name": str(host.get("freq_name") or ""),
+        "interface": str(host.get("interface") or ""),
+        "dev_state": str(host.get("dev_state") or ""),
     }
