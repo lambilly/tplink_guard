@@ -4,9 +4,11 @@ Each line of the device list file (``lists/device.txt`` inside the
 integration folder) defines one terminal that gets its own device_tracker
 entity showing whether it is online (home) or offline (not_home).
 
-Line format: ``MAC, IP, display_name, entity_name``. Column 2 (IP) is a
-reserved slot and is normally empty (``MAC,,display_name,entity_name``).
-Column 3 is the friendly/display name (Chinese allowed); column 4 builds
+Line format: ``MAC, IP, display_name, entity_name``. Column 2 (IP) is an
+optional LAN probe fallback: the terminal is home when its MAC is in the
+router online table OR the probe IP answers (``MAC,,display_name,entity_name``
+keeps MAC-only matching). Column 3 is the friendly/display name (Chinese
+allowed); column 4 builds
 the entity id (``device_tracker.tplink_guard_<entity_name>``). If the
 entity name is missing it is derived from the router hostname (falling
 back to the MAC). The legacy ``MAC, entity_name, display_name`` form is
@@ -75,7 +77,7 @@ def _pin_tracker_identity(registry, entry: ConfigEntry, entity) -> None:
     "<device name> <entity name>"; a pure name change also regenerates the
     id. Pinning both the id and the display name explicitly (the same
     mechanism as the guest sensor) keeps them independent and stable:
-    the id comes from the second TXT field, the display name from the
+    the id comes from the fourth TXT field, the display name from the
     third (Chinese allowed).
     """
     wanted = f"device_tracker.tplink_guard_{entity._attr_name}"
@@ -137,8 +139,19 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
         self._attr_icon = "mdi:monitor"
         self._attr_source_type = SourceType.ROUTER
 
+    def _snapshot_row(self) -> dict[str, Any] | None:
+        """Return the coordinator's MAC/IP resolved row for this terminal."""
+        data = self.coordinator.data or {}
+        for row in data.get("monitored_devices") or []:
+            if row.get("mac") == self._mac:
+                return row
+        return None
+
     def _lookup_hostname(self) -> str:
         """Best-effort hostname lookup from the latest coordinator data."""
+        row = self._snapshot_row()
+        if row and row.get("hostname"):
+            return str(row["hostname"])
         data = self.coordinator.data or {}
         for device in data.get("devices") or []:
             if device.get("mac") == self._mac and device.get("hostname"):
@@ -147,7 +160,15 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
 
     @property
     def is_connected(self) -> bool:
-        """True when the terminal is currently online on the router."""
+        """True when the MAC is online or the fallback IP answers.
+
+        The coordinator computes this once per refresh and stores it in
+        ``monitored_devices``; falling back to a plain MAC check keeps the
+        tracker working with older coordinator snapshots.
+        """
+        row = self._snapshot_row()
+        if row is not None:
+            return bool(row.get("online"))
         data = self.coordinator.data or {}
         return any(
             device.get("mac") == self._mac
@@ -174,6 +195,7 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
+        row = self._snapshot_row()
         device = next(
             (
                 d
@@ -182,9 +204,18 @@ class MonitoredTerminalTracker(CoordinatorEntity, DeviceTrackerEntity):
             ),
             None,
         )
+        if row:
+            ip = str(row.get("ip") or "")
+            hostname = str(row.get("hostname") or "")
+            source = str(row.get("source") or "")
+        else:
+            ip = str(device.get("ip") or "") if device else ""
+            hostname = str(device.get("hostname") or "") if device else ""
+            source = "mac" if device else ""
         return {
             "mac": self._mac,
-            "ip": device.get("ip", "") if device else "",
-            "hostname": device.get("hostname", "") if device else "",
+            "ip": ip,
+            "hostname": hostname,
+            "source": source,
             ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
         }

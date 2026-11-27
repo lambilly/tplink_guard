@@ -1,6 +1,7 @@
 # TPLink Guard 设备终端名单：每行格式 MAC,IP,显示名,实体名
-# IP 列预留暂留空（MAC,,显示名,实体名）；第三字段显示名，第四字段生成实体 ID
+# IP 列为可选 LAN 探测兜底：MAC 命中或 IP 探测通即在线；空 IP 为仅 MAC 判定
+# 第三字段显示名，第四字段生成实体 ID
 # 实体 ID：hui_pu_dian_nao → device_tracker.tplink_guard_hui_pu_dian_nao
 # 修改/增删后自动重载，也可调用 tplink_guard.reload_whitelist
-20-BD-1D-D7-85-57,, 惠普电脑, hui_pu_dian_nao
+20-BD-1D-D7-85-57, 192.168.1.10, 惠普电脑, hui_pu_dian_nao
 AA-BB-CC-DD-EE-01,, 设备A, dev_a

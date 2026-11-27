@@ -220,9 +220,11 @@ def load_whitelist(path: str | os.PathLike[str] | None) -> Whitelist:
 def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     """Load the device-terminal list (``lists/device.txt``).
 
-    Each line is ``MAC, IP, 显示名, 实体名``. Column 2 (IP) is reserved and
-    normally empty (``MAC,,显示名,实体名``); column 3 is the friendly display
-    name, column 4 the entity id used for ``device_tracker.tplink_guard_<id>``.
+    Each line is ``MAC, IP, 显示名, 实体名``. Column 2 (IP) is an optional
+    direct-probe address: when present, a reachable IP marks the terminal
+    online even if the router mislabels it offline (``MAC,,显示名,实体名``
+    keeps the MAC-only behaviour). Column 3 is the friendly display name,
+    column 4 the entity id used for ``device_tracker.tplink_guard_<id>``.
     The legacy ``MAC,实体名,显示名`` 3-column form is still accepted.
     A missing entity id is auto-filled later from the router hostname.
     Comment lines start with ``#``. The function name is kept for API
@@ -258,15 +260,27 @@ def load_monitored(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
         if mac in seen:
             continue
         seen.add(mac)
-        # New 4-column form: MAC, IP, 显示名, 实体名 (IP column reserved).
-        # Legacy 3-column form: MAC, 实体名, 显示名.
+        # New 4-column form: MAC, IP, 显示名, 实体名. The IP is the LAN
+        # fallback probe target; empty columns keep MAC-only matching.
+        # New 3-column form: MAC, IP, 显示名.
+        # Legacy 3-column form: MAC, 实体名, 显示名 (no IP in column 2).
+        ip = ""
+        if len(fields) >= 3 and re.fullmatch(
+            r"\d{1,3}(?:\.\d{1,3}){3}", fields[1]
+        ):
+            ip = fields[1]
         if len(fields) >= 4:
             name = fields[2]
             entity_id = fields[3]
+        elif ip:
+            name = fields[2]
+            entity_id = ""
         else:
             entity_id = fields[1] if len(fields) > 1 else ""
             name = fields[2] if len(fields) > 2 else ""
-        result.append({"mac": mac, "entity_id": entity_id, "name": name})
+        result.append(
+            {"mac": mac, "ip": ip, "entity_id": entity_id, "name": name}
+        )
     return result
 
 

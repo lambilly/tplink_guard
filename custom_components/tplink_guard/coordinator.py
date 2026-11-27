@@ -309,6 +309,85 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             f"{group}_devices": result_devices,
         }
 
+    async def _async_monitored_snapshot(
+        self, devices: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Resolve monitored terminals with a MAC hit or an IP probe.
+
+        ``device.txt`` rows are ``MAC,IP,显示名,实体名``. Column 2 is an
+        optional LAN probe address: a terminal is online when its MAC is
+        present in the fresh router host table OR the probe IP answers.
+        This fixes devices the router mislabels as offline, and is shared
+        by Device Online Count and every device_tracker entity so the
+        sensor and trackers can never disagree.
+        """
+        entries = self.monitored or []
+        if not entries:
+            return {
+                "monitored_online_count": 0,
+                "monitored_offline_count": 0,
+                "monitored_devices": [],
+            }
+        by_mac = {
+            str(device.get("mac") or ""): device
+            for device in devices
+            if device.get("mac")
+        }
+        probe_indexes = [
+            index
+            for index, item in enumerate(entries)
+            if item.get("ip")
+        ]
+        probe_results = await asyncio.gather(
+            *(
+                async_probe_ap(
+                    str(entries[index].get("ip") or ""),
+                    timeout=AP_PROBE_TIMEOUT,
+                )
+                for index in probe_indexes
+            ),
+            return_exceptions=True,
+        )
+        ip_online = {
+            index: result is True
+            for index, result in zip(probe_indexes, probe_results)
+        }
+
+        rows: list[dict[str, Any]] = []
+        for index, item in enumerate(entries):
+            mac = str(item.get("mac") or "")
+            probe_ip = str(item.get("ip") or "")
+            matched = by_mac.get(mac)
+            probed = ip_online.get(index, False)
+            online = matched is not None or probed
+            if matched and probed:
+                source = "mac+ip"
+            elif matched:
+                source = "mac"
+            elif probed:
+                source = "ip"
+            else:
+                source = ""
+            rows.append(
+                {
+                    "mac": mac,
+                    "entity_id": str(item.get("entity_id") or ""),
+                    "name": str(item.get("name") or item.get("entity_id") or mac),
+                    "ip": str(matched.get("ip") or "") if matched else probe_ip,
+                    "probe_ip": probe_ip,
+                    "hostname": str(matched.get("hostname") or "") if matched else "",
+                    "state": "online" if online else "offline",
+                    "online": online,
+                    "source": source,
+                }
+            )
+        online_count = sum(1 for row in rows if row["online"])
+        return {
+            "monitored_online_count": online_count,
+            "monitored_offline_count": max(len(rows) - online_count, 0),
+            "monitored_devices": rows,
+        }
+
     async def _async_ap_snapshot(self) -> dict[str, Any]:
         """Probe APs directly; independent of the router admin session."""
         ap_devices = await async_probe_aps(self.aps, timeout=AP_PROBE_TIMEOUT)
@@ -415,28 +494,13 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Unknown online devices: %s", [d["ip"] for d in unknown])
 
         # Monitored terminals: terminals that own a device_tracker entity.
+        # MAC hit or a successful LAN probe of the column-2 IP counts as
+        # online; the same snapshot drives the sensor and the trackers.
         monitored_macs = {item.get("mac") for item in self.monitored if item.get("mac")}
-        monitored_online_count = sum(
-            1 for device in devices if device.get("mac") in monitored_macs
-        )
-        monitored_offline_count = max(len(monitored_macs) - monitored_online_count, 0)
-        # Detail rows for the merged Monitored Online Count entity: the
-        # secondary count entities become attributes instead of entities.
-        monitored_devices: list[dict[str, Any]] = []
-        for item in self.monitored:
-            mac = str(item.get("mac") or "")
-            matched = next((device for device in devices if device.get("mac") == mac), None)
-            monitored_devices.append(
-                {
-                    "mac": mac,
-                    "entity_id": str(item.get("entity_id") or ""),
-                    "name": str(item.get("name") or item.get("entity_id") or mac),
-                    "ip": str(matched.get("ip") or "") if matched else "",
-                    "hostname": str(matched.get("hostname") or "") if matched else "",
-                    "state": "online" if matched else "offline",
-                    "online": matched is not None,
-                }
-            )
+        monitored_snapshot = await self._async_monitored_snapshot(devices)
+        monitored_online_count = monitored_snapshot["monitored_online_count"]
+        monitored_offline_count = monitored_snapshot["monitored_offline_count"]
+        monitored_devices = monitored_snapshot["monitored_devices"]
 
         static_devices: list[dict[str, Any]] = []
         try:

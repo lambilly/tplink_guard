@@ -16,7 +16,7 @@
 - **白名单 TXT**：每行格式 `MAC, IP, 名称`，IP 字段可选（动态 / 无 IP 留空），第 3 列为设备名称；不使用引号
 - **客人手机名单 TXT**（`lists/guestphone.txt`，原手机名单 / 关注名单）：格式为 `MAC, IP, 姓名, 昵称`，但只有同时存在于白名单中的设备才算客人手机终端
 - 名称字段为 `姓名,昵称`（第 3、4 字段），解析后用于来访统计的在家 / 外出列表显示；统计并入 `guest_visit_count`，不再单独生成手机在线数实体
-- **设备终端名单 TXT**（`lists/device.txt`）：每行 `MAC,IP,显示名,实体名`，第二列 IP 预留暂空（`MAC,,显示名,实体名`），第三字段为中文显示名，第四字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`）
+- **设备终端名单 TXT**（`lists/device.txt`）：每行 `MAC,IP,显示名,实体名`，第二列 IP 为可选 LAN 探测兜底（动态 / 无 IP 留空写成 `MAC,,显示名,实体名`），MAC 命中或 IP 探测通即在线；第三字段为中文显示名，第四字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`）
 - **AP 名单 TXT**（`lists/ap.txt`）：每行 `MAC, IP, 名称`，第 2 列 IP 直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），第 3 列名称用于各 `*_list` 属性显示；IP 为空（`MAC,,名称`）的行会跳过。生成 AP Online Count 一个实体，总数 / 离线数以属性提供
 - **分组在线名单 TXT**（`lists/gateway.txt` / `lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：统一格式 `MAC,IP,中文名,英文名`，IP 动态或为空时用 `,,` 跳过（如 `MAC,,中文名,英文名`）。MAC 比对 TPLINK 在线终端表，IP 额外做 LAN 探测（任一命中即在线，可修正路由器把在线设备误标 offline）。分别生成 Gateway / ASR / Server / Router Online Count，增删终端只改对应 TXT 一行，文件变化自动重载；不依赖任何 HA 实体状态或 `iphonedetect` 的 device_tracker
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
@@ -34,7 +34,7 @@
 2. 把 `examples/` 下的示例文件复制到 **`custom_components/tplink_guard/lists/`**（随集成目录一起），并改名为：
    - `whitelist.txt`（白名单）
    - `guestphone.example.txt` → `guestphone.txt`（客人手机名单）
-   - `device.example.txt` → `device.txt`（设备终端名单，不需要逐台实体可留空）
+   - `device.example.txt` → `device.txt`（设备终端名单，可填探测 IP 作为在线兜底；不需要逐台实体可留空）
    - `ap.example.txt` → `ap.txt`（AP 名单，不需要 AP 监控可留空）
    - `gateway.example.txt` → `gateway.txt`（网关 / 蓝牙代理名单，不需要网关监控可留空）
    - `asr.example.txt` → `asr.txt`（ASR 语音终端名单，不需要 ASR 监控可留空）
@@ -104,7 +104,7 @@ AA-BB-CC-DD-EE-01, 192.168.1.140, 张三, 三哥
 AA-BB-CC-DD-EE-01,, 设备A, dev_a
 ```
 
-- 第二字段为预留的 **IP 列**（动态 / 无 IP 留空，写成 `MAC,,显示名,实体名`）
+- 第二字段为可选的 **IP 探测兜底列**：填写后，路由器 MAC 不在线但该 IP 能 ping / TCP 连通时仍判定在线；动态 / 无 IP 留空写成 `MAC,,显示名,实体名`，此时仅按 MAC 判定
 - 第三字段是**前端显示名**（可用中文），第四字段生成**实体 ID**：`hui_pu_dian_nao` → `device_tracker.tplink_guard_hui_pu_dian_nao`；可带或不带 `device_tracker.` 前缀填写
 - 显示名与实体 ID 相互独立——集成会同时钉住 ID 与显示名，HA 2026.11 不会重生成
 - 省略 `实体名` 时按路由器主机名自动生成
