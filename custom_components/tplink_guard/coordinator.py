@@ -19,12 +19,14 @@ from .const import (
     ATTR_WHITELIST_COUNT,
     CHECKLIST_GROUPS,
     DOMAIN,
+    MAC_CHECKLIST_GROUPS,
     SESSION_YIELD_MINUTES,
 )
 from .whitelist import (
     Whitelist,
     load_aps,
     load_checklist,
+    load_checklist_by_mac,
     load_monitored,
     load_whitelist,
     split_watch_note,
@@ -82,8 +84,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "router": router_path,
         }
         self.checklists: dict[str, list[dict[str, str]]] = {
-            name: load_checklist(self.checklist_paths[name])
-            for name, _, _ in CHECKLIST_GROUPS
+            name: self._read_checklist(name) for name, _, _ in CHECKLIST_GROUPS
         }
         self._checklist_mtimes: dict[str, float] = {
             name: whitelist_mtime(self.checklist_paths[name])
@@ -101,6 +102,13 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_good_data: dict[str, Any] | None = None
         self._yield_until: datetime | None = None
 
+    def _read_checklist(self, name: str) -> list[dict[str, str]]:
+        """Read a checklist with the loader matching its entry format."""
+        path = self.checklist_paths[name]
+        if name in MAC_CHECKLIST_GROUPS:
+            return load_checklist_by_mac(path)
+        return load_checklist(path)
+
     async def async_reload_whitelist(self) -> None:
         """Re-read both lists and refresh all entity states."""
         self.whitelist = load_whitelist(self.whitelist_path)
@@ -112,7 +120,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.aps = load_aps(self.ap_path)
         self._ap_mtime = whitelist_mtime(self.ap_path)
         for name, _, _ in CHECKLIST_GROUPS:
-            self.checklists[name] = load_checklist(self.checklist_paths[name])
+            self.checklists[name] = self._read_checklist(name)
             self._checklist_mtimes[name] = whitelist_mtime(self.checklist_paths[name])
         await self.async_request_refresh()
 
@@ -141,7 +149,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             current = whitelist_mtime(self.checklist_paths[name])
             if current and current != self._checklist_mtimes[name]:
                 _LOGGER.debug("%s list changed, reloading", name.title())
-                self.checklists[name] = load_checklist(self.checklist_paths[name])
+                self.checklists[name] = self._read_checklist(name)
                 self._checklist_mtimes[name] = current
 
     async def _async_checklist_snapshot(self, group: str) -> dict[str, Any]:
@@ -210,6 +218,56 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             f"{group}_devices": devices,
         }
 
+    def _async_mac_checklist_snapshot(
+        self, group: str, devices: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Match a MAC-based list against the router's online host table.
+
+        Unlike entity-state checklists this needs the freshly fetched router
+        data, so it is computed after ``devices`` is built. A listed MAC that
+        appears in the online host table is online; otherwise offline.
+        """
+        entries = self.checklists.get(group) or []
+        if not entries:
+            return {
+                f"{group}_all_count": 0,
+                f"{group}_online_count": 0,
+                f"{group}_offline_count": 0,
+                f"{group}_devices": [],
+            }
+        by_mac = {
+            str(device.get("mac") or ""): device
+            for device in devices
+            if device.get("mac")
+        }
+        result_devices: list[dict[str, Any]] = []
+        for item in entries:
+            mac = item.get("mac") or ""
+            matched = by_mac.get(mac)
+            online = matched is not None
+            name_cn = item.get("name_cn") or ""
+            name_en = item.get("name_en") or ""
+            result_devices.append(
+                {
+                    "mac": mac,
+                    "name": name_cn or name_en or mac,
+                    "name_cn": name_cn,
+                    "name_en": name_en,
+                    "entity_id": name_en or mac,
+                    "ip": str(matched.get("ip") or "") if matched else "",
+                    "hostname": str(matched.get("hostname") or "") if matched else "",
+                    "state": "online" if online else "offline",
+                    "online": online,
+                }
+            )
+        online_count = sum(1 for device in result_devices if device["online"])
+        return {
+            f"{group}_all_count": len(result_devices),
+            f"{group}_online_count": online_count,
+            f"{group}_offline_count": len(result_devices) - online_count,
+            f"{group}_devices": result_devices,
+        }
+
     async def _async_ap_snapshot(self) -> dict[str, Any]:
         """Probe APs directly; independent of the router admin session."""
         ap_devices = await async_probe_aps(self.aps, timeout=AP_PROBE_TIMEOUT)
@@ -228,6 +286,10 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ap_data = await self._async_ap_snapshot()
         checklist_data: dict[str, Any] = {}
         for name, _, _ in CHECKLIST_GROUPS:
+            if name in MAC_CHECKLIST_GROUPS:
+                # MAC-based groups are matched against the router host table
+                # below, after the fresh device snapshot is available.
+                continue
             checklist_data.update(await self._async_checklist_snapshot(name))
 
         # Session yield: while another client owns the admin session, keep
@@ -299,6 +361,12 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             device["mac"]: device for device in devices if device.get("mac")
         }
 
+        # MAC-based checklists (e.g. ASR) match their TXT MAC list directly
+        # against the router's online host table just built.
+        mac_checklist_data: dict[str, Any] = {}
+        for name in MAC_CHECKLIST_GROUPS:
+            mac_checklist_data.update(self._async_mac_checklist_snapshot(name, devices))
+
         unknown = [device for device in devices if not device["known"]]
         phone_online = [device for device in devices if device["watched"]]
         phone_offline = self.watchlist.count - len(phone_online)
@@ -364,6 +432,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         data = {
             **ap_data,
             **checklist_data,
+            **mac_checklist_data,
             "devices": devices,
             "router_model": router_model or "unknown",
             "router_info": router_info,

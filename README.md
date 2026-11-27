@@ -19,7 +19,7 @@
 - **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体名,显示名`，第二字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`），第三字段为中文显示名（可省略）
 - **AP 名单 TXT**（`lists/ap.txt`）：每行 `IP,名称`，直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），生成 AP All / Online / Offline Count 三个计数实体
 - **网关名单 TXT**（`lists/gateway.txt`）：`IP,名称` 直接探测网关；`实体ID,名称,eq|ne,期望值` 读取 HA 其它集成的实体状态（蓝牙网关 / ESPHome 蓝牙代理），生成 Gateway Online Count 实体；网关不再依赖 `iphonedetect` 的 device_tracker
-- **分组在线名单 TXT**（`lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：每行 `实体ID,名称,eq|ne,期望值`，分别生成 ASR / Server / Router Online Count；与网关名单共用同一套机制，增删终端只改对应 TXT 一行，文件变化自动重载
+- **分组在线名单 TXT**（`lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：ASR 名单为 `MAC,中文名,英文名`，直接比对 TPLINK 在线终端表；服务器 / 路由器名单为 `实体ID,名称,eq|ne,期望值`。分别生成 ASR / Server / Router Online Count，增删终端只改对应 TXT 一行，文件变化自动重载
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -152,18 +152,25 @@ sensor.84469303d628_action, 蓝牙网关, ne, unavailable
 - `sensor.tplink_guard_gateway_online_count` 复刻旧 NR 实体的 `gateway_all_count / gateway_all_list / gateway_online_count / gateway_online_list / gateway_offline_count / gateway_offline_list / update_time`，单位「台」，并保留 `gateway_devices` 明细（含每项 `entity_id / name / state / online`）
 - 名单变化自动重载，同样由 `tplink_guard.reload_whitelist` 触发
 
-ASR / 服务器 / 路由器名单与网关共用同一格式，分别位于 `lists/asr.txt`、`lists/server.txt`、`lists/router.txt`：
+ASR 名单位于 `lists/asr.txt`，格式为 `MAC,中文名,英文名`——集成用 MAC 比对从 TPLINK 获取到的全部在线终端表，不再依赖任何 HA 实体状态或 IP sensor（设备换了 IP 也能正确识别）：
 
 ```
 # asr.txt
-sensor.asrpro_64f897_ip_address, 客厅小黑, eq, 192.168.1.91
+48-55-19-64-F8-97, 客厅小黑, keting_xiaohei
+84-CC-A8-98-01-F6, 主卧小黑, zhuwo_xiaohei
+F4-CF-A2-E5-D5-B1, 复刻小乐, fuke_xiaole
+```
+
+服务器 / 路由器名单与网关共用实体状态格式，分别位于 `lists/server.txt`、`lists/router.txt`：
+
+```
 # server.txt
 device_tracker.lamnas_ws, 群晖 NAS, eq, home
 # router.txt
 binary_sensor.tp_link_smb_tl_r498gpm_ac_wan_status, 主路由, eq, on
 ```
 
-- `sensor.tplink_guard_asr_online_count` / `sensor.tplink_guard_server_online_count` / `sensor.tplink_guard_router_online_count` 各复刻旧 NR 实体的 7 个属性（`<组名>_all_count / _all_list / _online_count / _online_list / _offline_count / _offline_list / update_time`），并保留 `<组名>_devices` 明细
+- `sensor.tplink_guard_asr_online_count` / `sensor.tplink_guard_server_online_count` / `sensor.tplink_guard_router_online_count` 各复刻旧 NR 实体的 7 个属性（`<组名>_all_count / _all_list / _online_count / _online_list / _offline_count / _offline_list / update_time`），并保留 `<组名>_devices` 明细。ASR 的明细额外含 `mac / name_cn / name_en / ip / hostname`
 - 单位分别为「个」「台」「台」，与旧 NR 实体一致；新增设备只需在对应 TXT 增加一行，无需改代码或重启
 - 路由器组的「过滤器」按 `device_tracker.esp32_c3_adblock` 自身状态判定（旧 NR 代码误用了交换机的状态）
 

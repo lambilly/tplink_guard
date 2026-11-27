@@ -348,6 +348,49 @@ def load_checklist(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     return result
 
 
+def load_checklist_by_mac(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
+    """Load a MAC-based online-check list (e.g. the ASR terminal list).
+
+    Each line is ``MAC, 中文名, 英文名`` (``#`` starts a comment). Membership
+    is decided by comparing the MAC against the router's online host table,
+    so it does not depend on any third-party HA entity. Lines with an
+    invalid MAC are skipped; duplicate MACs are ignored.
+    """
+    if not path:
+        return []
+    file_path = Path(path)
+    if not file_path.exists():
+        _LOGGER.warning("MAC checklist file not found: %s", file_path)
+        return []
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    try:
+        lines = file_path.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as err:
+        _LOGGER.error("Failed to read MAC checklist %s: %s", file_path, err)
+        return []
+    for line in lines:
+        body = line.split("#", 1)[0].strip()
+        if not body:
+            continue
+        parts = [part.strip() for part in body.split(",")]
+        mac = normalize_mac(parts[0])
+        if len(mac) != 12 or mac in seen:
+            _LOGGER.debug("Skipping invalid MAC checklist line: %s", line)
+            continue
+        seen.add(mac)
+        result.append(
+            {
+                "kind": "mac",
+                "target": mac,
+                "mac": mac,
+                "name_cn": parts[1] if len(parts) > 1 and parts[1] else mac,
+                "name_en": parts[2] if len(parts) > 2 and parts[2] else "",
+            }
+        )
+    return result
+
+
 def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     """Backward-compatible alias for the gateway list."""
     return load_checklist(path)
