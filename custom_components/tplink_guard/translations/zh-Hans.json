@@ -15,7 +15,10 @@
           "match_by": "匹配方式",
           "monitored_path": "监控终端名单文件路径",
           "ap_path": "AP 名单文件路径",
-          "gateway_path": "网关/代理名单文件路径"
+          "gateway_path": "网关/代理名单文件路径",
+          "asr_path": "ASR 终端名单文件路径",
+          "server_path": "服务器/主机名单文件路径",
+          "router_path": "网络基础设施名单文件路径"
         }
       }
     },
@@ -31,7 +34,7 @@
   "services": {
     "reload_whitelist": {
       "name": "重新加载名单",
-      "description": "立即从配置的文件路径重新读取白名单、手机名单、监控终端名单、AP 名单与网关名单，并刷新所有实体状态。"
+      "description": "立即从配置的文件路径重新读取白名单、手机名单、监控终端名单、AP、网关、ASR、服务器与网络基础设施名单，并刷新所有实体状态。"
     }
   },
   "options": {
@@ -45,7 +48,10 @@
           "match_by": "匹配方式",
           "monitored_path": "监控终端名单文件路径",
           "ap_path": "AP 名单文件路径",
-          "gateway_path": "网关/代理名单文件路径"
+          "gateway_path": "网关/代理名单文件路径",
+          "asr_path": "ASR 终端名单文件路径",
+          "server_path": "服务器/主机名单文件路径",
+          "router_path": "网络基础设施名单文件路径"
         }
       }
     }

@@ -23,12 +23,16 @@ import homeassistant.helpers.config_validation as cv
 from .api import RouterAuthError, RouterClient, RouterConnectionError
 from .const import (
     CONF_AP_PATH,
+    CONF_ASR_PATH,
     CONF_GATEWAY_PATH,
     CONF_MATCH_BY,
     CONF_MONITORED_PATH,
+    CONF_ROUTER_PATH,
+    CONF_SERVER_PATH,
     CONF_WATCHLIST_PATH,
     CONF_WHITELIST_PATH,
     DEFAULT_AP_FILENAME,
+    DEFAULT_ASR_FILENAME,
     DEFAULT_GATEWAY_FILENAME,
     DEFAULT_HOST,
     DEFAULT_LISTS_RELDIR,
@@ -36,7 +40,9 @@ from .const import (
     DEFAULT_MONITORED_FILENAME,
     DEFAULT_PHONE_FILENAME,
     DEFAULT_PORT,
+    DEFAULT_ROUTER_FILENAME,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SERVER_FILENAME,
     DEFAULT_USERNAME,
     DEFAULT_WHITELIST_FILENAME,
     DOMAIN,
@@ -52,6 +58,9 @@ def _user_schema(
     default_monitored: str,
     default_ap: str,
     default_gateway: str,
+    default_asr: str,
+    default_server: str,
+    default_router: str,
 ) -> vol.Schema:
     return vol.Schema(
         {
@@ -73,6 +82,9 @@ def _user_schema(
             ): str,
             vol.Optional(CONF_AP_PATH, default=default_ap): str,
             vol.Optional(CONF_GATEWAY_PATH, default=default_gateway): str,
+            vol.Optional(CONF_ASR_PATH, default=default_asr): str,
+            vol.Optional(CONF_SERVER_PATH, default=default_server): str,
+            vol.Optional(CONF_ROUTER_PATH, default=default_router): str,
             vol.Optional(CONF_MATCH_BY, default=DEFAULT_MATCH_BY): vol.In(MATCH_MODES),
         }
     )
@@ -106,6 +118,18 @@ def _options_schema(current: dict[str, Any]) -> vol.Schema:
                 default=current.get(CONF_GATEWAY_PATH, ""),
             ): str,
             vol.Optional(
+                CONF_ASR_PATH,
+                default=current.get(CONF_ASR_PATH, ""),
+            ): str,
+            vol.Optional(
+                CONF_SERVER_PATH,
+                default=current.get(CONF_SERVER_PATH, ""),
+            ): str,
+            vol.Optional(
+                CONF_ROUTER_PATH,
+                default=current.get(CONF_ROUTER_PATH, ""),
+            ): str,
+            vol.Optional(
                 CONF_MATCH_BY,
                 default=current.get(CONF_MATCH_BY, DEFAULT_MATCH_BY),
             ): vol.In(MATCH_MODES),
@@ -128,6 +152,13 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
         default_ap = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_AP_FILENAME)
         default_gateway = self.hass.config.path(
             DEFAULT_LISTS_RELDIR, DEFAULT_GATEWAY_FILENAME
+        )
+        default_asr = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_ASR_FILENAME)
+        default_server = self.hass.config.path(
+            DEFAULT_LISTS_RELDIR, DEFAULT_SERVER_FILENAME
+        )
+        default_router = self.hass.config.path(
+            DEFAULT_LISTS_RELDIR, DEFAULT_ROUTER_FILENAME
         )
 
         if user_input is not None:
@@ -166,6 +197,9 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
                 default_monitored,
                 default_ap,
                 default_gateway,
+                default_asr,
+                default_server,
+                default_router,
             ),
             errors=errors,
         )

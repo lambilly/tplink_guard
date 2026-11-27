@@ -283,8 +283,8 @@ def load_aps(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
     return result
 
 
-def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
-    """Load the gateway / Bluetooth-proxy list.
+def load_checklist(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
+    """Load a generic online-check list (gateway / ASR / server / router).
 
     Two line forms: ``IP, name`` probes the IP directly, and
     ``entity_id, name, rule, expected`` reads an HA entity state where
@@ -295,14 +295,14 @@ def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
         return []
     file_path = Path(path)
     if not file_path.exists():
-        _LOGGER.warning("Gateway list file not found: %s", file_path)
+        _LOGGER.warning("Checklist file not found: %s", file_path)
         return []
     result: list[dict[str, str]] = []
     seen: set[str] = set()
     try:
         lines = file_path.read_text(encoding="utf-8-sig").splitlines()
     except (OSError, UnicodeError) as err:
-        _LOGGER.error("Failed to read gateway list %s: %s", file_path, err)
+        _LOGGER.error("Failed to read checklist %s: %s", file_path, err)
         return []
     for line in lines:
         body = line.split("#", 1)[0].strip()
@@ -311,7 +311,7 @@ def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
         parts = [part.strip() for part in body.split(",")]
         key = parts[0]
         if not key or key in seen:
-            _LOGGER.debug("Skipping invalid gateway line: %s", line)
+            _LOGGER.debug("Skipping invalid checklist line: %s", line)
             continue
         seen.add(key)
         name = parts[1] if len(parts) > 1 and parts[1] else key
@@ -330,7 +330,7 @@ def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
             )
             continue
         if "." not in key:
-            _LOGGER.debug("Skipping invalid gateway line: %s", line)
+            _LOGGER.debug("Skipping invalid checklist line: %s", line)
             continue
         op = (parts[2] if len(parts) > 2 else "eq").lower()
         if op not in ("eq", "ne", "equal", "not_equal"):
@@ -346,6 +346,11 @@ def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
             }
         )
     return result
+
+
+def load_gateways(path: str | os.PathLike[str] | None) -> list[dict[str, str]]:
+    """Backward-compatible alias for the gateway list."""
+    return load_checklist(path)
 
 
 def whitelist_mtime(path: str | os.PathLike[str] | None) -> float:

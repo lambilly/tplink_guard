@@ -11,6 +11,9 @@ CONF_WATCHLIST_PATH = "watchlist_path"
 CONF_MONITORED_PATH = "monitored_path"
 CONF_AP_PATH = "ap_path"
 CONF_GATEWAY_PATH = "gateway_path"
+CONF_ASR_PATH = "asr_path"
+CONF_SERVER_PATH = "server_path"
+CONF_ROUTER_PATH = "router_path"
 CONF_MATCH_BY = "match_by"
 
 DEFAULT_NAME = "TPLink Guard"
@@ -23,6 +26,17 @@ DEFAULT_PHONE_FILENAME = "phone.txt"
 DEFAULT_MONITORED_FILENAME = "monitored.txt"
 DEFAULT_AP_FILENAME = "ap.txt"
 DEFAULT_GATEWAY_FILENAME = "gateway.txt"
+DEFAULT_ASR_FILENAME = "asr.txt"
+DEFAULT_SERVER_FILENAME = "server.txt"
+DEFAULT_ROUTER_FILENAME = "router.txt"
+# Checklist groups share one list-driven engine: each group has its own
+# TXT file, sensor and legacy-compatible attributes.
+CHECKLIST_GROUPS: tuple[tuple[str, str, str], ...] = (
+    ("gateway", CONF_GATEWAY_PATH, DEFAULT_GATEWAY_FILENAME),
+    ("asr", CONF_ASR_PATH, DEFAULT_ASR_FILENAME),
+    ("server", CONF_SERVER_PATH, DEFAULT_SERVER_FILENAME),
+    ("router", CONF_ROUTER_PATH, DEFAULT_ROUTER_FILENAME),
+)
 # List files live in a subfolder of the integration directory so /config
 # stays clean: /config/custom_components/tplink_guard/lists/
 DEFAULT_LISTS_RELDIR = "custom_components/tplink_guard/lists"

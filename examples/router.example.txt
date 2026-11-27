@@ -1,0 +1,3 @@
+# 网络基础设施名单：实体ID, 名称, 判定规则, 期望值
+binary_sensor.tp_link_smb_tl_r498gpm_ac_wan_status, 主路由, eq, on
+device_tracker.tplink_switcher, 交换机, eq, home

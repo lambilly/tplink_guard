@@ -1,0 +1,5 @@
+# ASR 语音终端名单：实体ID, 名称, 判定规则, 期望值
+# eq = 状态等于期望值（默认）；ne = 状态不等于期望值
+sensor.asrpro_64f897_ip_address, 客厅小黑, eq, 192.168.1.91
+sensor.asrpro_9801f6_ip_address, 主卧小黑, eq, 192.168.1.92
+sensor.asrpro_xiaohei_e5d5b1_ip_address, 复刻小乐, eq, 192.168.1.153

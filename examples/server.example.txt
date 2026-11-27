@@ -1,0 +1,4 @@
+# 服务器 / 主机名单：实体ID, 名称, 判定规则, 期望值
+device_tracker.lamnas_ws, 群晖 NAS, eq, home
+sensor.system_monitor_ipv4_address_enp3s0, HAOS主机, eq, 192.168.1.125
+device_tracker.tplink_guard_hui_pu_dian_nao, 惠普电脑, eq, home

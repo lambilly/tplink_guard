@@ -51,6 +51,18 @@ OBJECT_IDS: dict[str, str] = {
     "ap_online_count": "ap_online_count",
     "ap_offline_count": "ap_offline_count",
     "gateway_online_count": "gateway_online_count",
+    "asr_online_count": "asr_online_count",
+    "server_online_count": "server_online_count",
+    "router_online_count": "router_online_count",
+}
+
+# List-driven online-count groups. Attribute names mirror the legacy
+# Node-RED sensors so dashboards only need the entity id changed.
+CHECKLIST_SENSORS: dict[str, tuple[str, str]] = {
+    "gateway_online_count": ("gateway", "mdi:network-outline"),
+    "asr_online_count": ("asr", "mdi:microphone-settings"),
+    "server_online_count": ("server", "mdi:nas"),
+    "router_online_count": ("router", "mdi:server-network"),
 }
 
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
@@ -137,6 +149,21 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         key="gateway_online_count",
         name="Gateway Online Count",
         icon="mdi:network-outline",
+    ),
+    SensorEntityDescription(
+        key="asr_online_count",
+        name="ASR Online Count",
+        icon="mdi:microphone-settings",
+    ),
+    SensorEntityDescription(
+        key="server_online_count",
+        name="Server Online Count",
+        icon="mdi:nas",
+    ),
+    SensorEntityDescription(
+        key="router_online_count",
+        name="Router Online Count",
+        icon="mdi:server-network",
     ),
 )
 
@@ -284,8 +311,11 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
             # Match the legacy Node-RED sensor's "个" unit so dashboards
             # can switch entity ids without changing their formatting.
             self._attr_native_unit_of_measurement = "个"
-        elif description.key == "gateway_online_count":
-            self._attr_native_unit_of_measurement = "台"
+        elif description.key in CHECKLIST_SENSORS:
+            # Legacy units: ASR "个", the others "台".
+            self._attr_native_unit_of_measurement = (
+                "个" if description.key == "asr_online_count" else "台"
+            )
         if description.key == "guest_visit":
             # Attached to the TPLink Guard device; entity id follows the
             # natural prefixed scheme (sensor.tplink_guard_guest_visit_count,
@@ -353,20 +383,30 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }
-        if self.entity_description.key == "gateway_online_count":
-            # Mirror the legacy Node-RED gateway sensor attributes.
-            gateways = data.get("gateway_devices") or []
-            names = [str(g.get("name") or g.get("entity_id") or "") for g in gateways]
-            online = [name for g, name in zip(gateways, names) if g.get("online")]
-            offline = [name for g, name in zip(gateways, names) if not g.get("online")]
+        checklist = CHECKLIST_SENSORS.get(self.entity_description.key)
+        if checklist:
+            # Mirror the legacy Node-RED sensor attributes for every group:
+            # gateway / asr / server / router all share the same shape.
+            group = checklist[0]
+            devices = data.get(f"{group}_devices") or []
+            names = [
+                str(device.get("name") or device.get("entity_id") or "")
+                for device in devices
+            ]
+            online = [
+                name for device, name in zip(devices, names) if device.get("online")
+            ]
+            offline = [
+                name for device, name in zip(devices, names) if not device.get("online")
+            ]
             return {
-                "gateway_devices": gateways,
-                "gateway_all_count": len(gateways),
-                "gateway_all_list": "｜".join(names) or "无",
-                "gateway_online_count": len(online),
-                "gateway_online_list": "｜".join(online) or "无",
-                "gateway_offline_count": len(offline),
-                "gateway_offline_list": "｜".join(offline) or "无",
+                f"{group}_devices": devices,
+                f"{group}_all_count": len(devices),
+                f"{group}_all_list": "｜".join(names) or "无",
+                f"{group}_online_count": len(online),
+                f"{group}_online_list": "｜".join(online) or "无",
+                f"{group}_offline_count": len(offline),
+                f"{group}_offline_list": "｜".join(offline) or "无",
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }

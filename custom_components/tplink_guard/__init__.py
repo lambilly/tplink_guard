@@ -19,18 +19,24 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import RouterClient
 from .const import (
     CONF_AP_PATH,
+    CONF_ASR_PATH,
     CONF_GATEWAY_PATH,
     CONF_MATCH_BY,
     CONF_MONITORED_PATH,
+    CONF_ROUTER_PATH,
+    CONF_SERVER_PATH,
     CONF_WATCHLIST_PATH,
     CONF_WHITELIST_PATH,
     DEFAULT_AP_FILENAME,
+    DEFAULT_ASR_FILENAME,
     DEFAULT_GATEWAY_FILENAME,
     DEFAULT_LISTS_RELDIR,
     DEFAULT_MATCH_BY,
     DEFAULT_MONITORED_FILENAME,
     DEFAULT_PHONE_FILENAME,
+    DEFAULT_ROUTER_FILENAME,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SERVER_FILENAME,
     DEFAULT_TIMEOUT,
     DEFAULT_WHITELIST_FILENAME,
     DOMAIN,
@@ -78,6 +84,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "tplink_guard_watchlist.txt": DEFAULT_PHONE_FILENAME,
         "tplink_guard_ap.txt": DEFAULT_AP_FILENAME,
         "tplink_guard_gateway.txt": DEFAULT_GATEWAY_FILENAME,
+        "tplink_guard_asr.txt": DEFAULT_ASR_FILENAME,
+        "tplink_guard_server.txt": DEFAULT_SERVER_FILENAME,
+        "tplink_guard_router.txt": DEFAULT_ROUTER_FILENAME,
     }
 
     def _config_path(value: str | None) -> str | None:
@@ -95,6 +104,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 DEFAULT_MONITORED_FILENAME,
                 DEFAULT_AP_FILENAME,
                 DEFAULT_GATEWAY_FILENAME,
+                DEFAULT_ASR_FILENAME,
+                DEFAULT_SERVER_FILENAME,
+                DEFAULT_ROUTER_FILENAME,
             )
             else None
         )
@@ -134,6 +146,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         gateway_path=_config_path(
             options.get(CONF_GATEWAY_PATH, entry.data.get(CONF_GATEWAY_PATH))
             or hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_GATEWAY_FILENAME)
+        ),
+        asr_path=_config_path(
+            options.get(CONF_ASR_PATH, entry.data.get(CONF_ASR_PATH))
+            or hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_ASR_FILENAME)
+        ),
+        server_path=_config_path(
+            options.get(CONF_SERVER_PATH, entry.data.get(CONF_SERVER_PATH))
+            or hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_SERVER_FILENAME)
+        ),
+        router_path=_config_path(
+            options.get(CONF_ROUTER_PATH, entry.data.get(CONF_ROUTER_PATH))
+            or hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_ROUTER_FILENAME)
         ),
     )
     await coordinator.async_config_entry_first_refresh()

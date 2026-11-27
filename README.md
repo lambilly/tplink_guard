@@ -19,6 +19,7 @@
 - **监控终端名单 TXT**（`lists/monitored.txt`）：每行 `MAC,实体名,显示名`，第二字段生成实体 ID（`device_tracker.tplink_guard_<实体名>`），第三字段为中文显示名（可省略）
 - **AP 名单 TXT**（`lists/ap.txt`）：每行 `IP,名称`，直接探测 AP 是否在线（AC 管理的 AP 不在路由器 `host_info` 中），生成 AP All / Online / Offline Count 三个计数实体
 - **网关名单 TXT**（`lists/gateway.txt`）：`IP,名称` 直接探测网关；`实体ID,名称,eq|ne,期望值` 读取 HA 其它集成的实体状态（蓝牙网关 / ESPHome 蓝牙代理），生成 Gateway Online Count 实体；网关不再依赖 `iphonedetect` 的 device_tracker
+- **分组在线名单 TXT**（`lists/asr.txt` / `lists/server.txt` / `lists/router.txt`）：每行 `实体ID,名称,eq|ne,期望值`，分别生成 ASR / Server / Router Online Count；与网关名单共用同一套机制，增删终端只改对应 TXT 一行，文件变化自动重载
 - 支持按 MAC、IP 或两者匹配；名单文件变化时自动重载，也可调用服务 `tplink_guard.reload_whitelist`
 - 自带本地 LOGO（`custom_components/tplink_guard/brand/`）
 - 仅生成聚合实体，不逐台创建设备传感器
@@ -37,12 +38,15 @@
    - `monitored.txt`（监控终端名单，不需要逐台实体可留空）
    - `ap.example.txt` → `ap.txt`（AP 名单，不需要 AP 监控可留空）
    - `gateway.example.txt` → `gateway.txt`（网关 / 蓝牙代理名单，不需要网关监控可留空）
+   - `asr.example.txt` → `asr.txt`（ASR 语音终端名单，不需要 ASR 监控可留空）
+   - `server.example.txt` → `server.txt`（服务器 / 主机名单，不需要服务器监控可留空）
+   - `router.example.txt` → `router.txt`（网络基础设施名单，不需要路由器监控可留空）
    然后按你自己的终端填写。
 3. 重启 Home Assistant。
 4. 在 HA 中进入「设置 → 设备与服务 → 添加集成」，搜索 `TPLink Guard`，按提示填写：
    - 主机地址、管理端口、用户名、密码
    - 刷新周期（秒）
-   - 白名单 / 手机名单 / 监控终端名单 / AP 名单 / 网关名单文件路径（默认 `custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt` / `gateway.txt`）
+   - 白名单 / 手机名单 / 监控终端名单 / AP 名单 / 网关 / ASR / 服务器 / 路由器名单文件路径（默认 `custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt` / `gateway.txt` / `asr.txt` / `server.txt` / `router.txt`）
    - 匹配方式（建议 `both`）
 
 > 密码只保存在 HA 的 `.storage/core.config_entries` 中，不会写入本项目的日志或文件。
@@ -72,6 +76,9 @@
 | `sensor.tplink_guard_ap_online_count` | AP Online Count | 当前在线 AP 数 |
 | `sensor.tplink_guard_ap_offline_count` | AP Offline Count | 当前离线 AP 数 |
 | `sensor.tplink_guard_gateway_online_count` | Gateway Online Count | 网关 / 蓝牙代理在线数（兼容旧 NR 实体的 7 个属性与单位「台」） |
+| `sensor.tplink_guard_asr_online_count` | ASR Online Count | ASR 语音终端在线数（兼容旧 NR 实体的 7 个属性与单位「个」） |
+| `sensor.tplink_guard_server_online_count` | Server Online Count | 服务器 / 主机在线数（兼容旧 NR 实体的 7 个属性与单位「台」） |
+| `sensor.tplink_guard_router_online_count` | Router Online Count | 网络基础设施在线数（兼容旧 NR 实体的 7 个属性与单位「台」） |
 | `binary_sensor.tplink_guard_unknown_terminal_present` | Unknown Terminal Present | 发现陌生终端 / 无陌生终端 |
 | `binary_sensor.tplink_guard_phone_online` | Phone Online | 在线 / 离线 |
 | `device_tracker.<实体ID>` | <实体ID> | 监控终端在线状态（home / not_home），由监控终端名单逐台生成 |
@@ -145,6 +152,21 @@ sensor.84469303d628_action, 蓝牙网关, ne, unavailable
 - `sensor.tplink_guard_gateway_online_count` 复刻旧 NR 实体的 `gateway_all_count / gateway_all_list / gateway_online_count / gateway_online_list / gateway_offline_count / gateway_offline_list / update_time`，单位「台」，并保留 `gateway_devices` 明细（含每项 `entity_id / name / state / online`）
 - 名单变化自动重载，同样由 `tplink_guard.reload_whitelist` 触发
 
+ASR / 服务器 / 路由器名单与网关共用同一格式，分别位于 `lists/asr.txt`、`lists/server.txt`、`lists/router.txt`：
+
+```
+# asr.txt
+sensor.asrpro_64f897_ip_address, 客厅小黑, eq, 192.168.1.91
+# server.txt
+device_tracker.lamnas_ws, 群晖 NAS, eq, home
+# router.txt
+binary_sensor.tp_link_smb_tl_r498gpm_ac_wan_status, 主路由, eq, on
+```
+
+- `sensor.tplink_guard_asr_online_count` / `sensor.tplink_guard_server_online_count` / `sensor.tplink_guard_router_online_count` 各复刻旧 NR 实体的 7 个属性（`<组名>_all_count / _all_list / _online_count / _online_list / _offline_count / _offline_list / update_time`），并保留 `<组名>_devices` 明细
+- 单位分别为「个」「台」「台」，与旧 NR 实体一致；新增设备只需在对应 TXT 增加一行，无需改代码或重启
+- 路由器组的「过滤器」按 `device_tracker.esp32_c3_adblock` 自身状态判定（旧 NR 代码误用了交换机的状态）
+
 ## 给自动化 / Node-RED 使用
 
 `sensor.tplink_guard_phone_online_ip` 的 `watchlist` 属性是一个数组，包含**完整的关注名单**（含离线设备）：
@@ -171,11 +193,14 @@ examples/                         # 名单示例与自动化示例
   monitored.example.txt
   ap.example.txt
   gateway.example.txt
+  asr.example.txt
+  server.example.txt
+  router.example.txt
   automations.yaml
 LICENSE                           # MIT
 ```
 
-真实名单文件（`custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt` / `gateway.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
+真实名单文件（`custom_components/tplink_guard/lists/` 下的 `whitelist.txt` / `phone.txt` / `monitored.txt` / `ap.txt` / `gateway.txt` / `asr.txt` / `server.txt` / `router.txt`）含个人网络信息，已通过 `.gitignore` 排除，不会进入仓库。
 
 ## 免责声明
 

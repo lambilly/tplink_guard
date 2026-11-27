@@ -17,13 +17,14 @@ from .const import (
     ATTR_LAST_UPDATE,
     ATTR_WATCHLIST,
     ATTR_WHITELIST_COUNT,
+    CHECKLIST_GROUPS,
     DOMAIN,
     SESSION_YIELD_MINUTES,
 )
 from .whitelist import (
     Whitelist,
     load_aps,
-    load_gateways,
+    load_checklist,
     load_monitored,
     load_whitelist,
     split_watch_note,
@@ -48,6 +49,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         monitored_path: str | None = None,
         ap_path: str | None = None,
         gateway_path: str | None = None,
+        asr_path: str | None = None,
+        server_path: str | None = None,
+        router_path: str | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -69,9 +73,22 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.ap_path = ap_path
         self.aps: list[dict[str, str]] = load_aps(ap_path)
         self._ap_mtime = whitelist_mtime(ap_path)
-        self.gateway_path = gateway_path
-        self.gateways: list[dict[str, str]] = load_gateways(gateway_path)
-        self._gateway_mtime = whitelist_mtime(gateway_path)
+        # Generic list-driven checklists: gateway / ASR / server / router.
+        # Each group has its own TXT file and produces its own count sensor.
+        self.checklist_paths: dict[str, str | None] = {
+            "gateway": gateway_path,
+            "asr": asr_path,
+            "server": server_path,
+            "router": router_path,
+        }
+        self.checklists: dict[str, list[dict[str, str]]] = {
+            name: load_checklist(self.checklist_paths[name])
+            for name, _, _ in CHECKLIST_GROUPS
+        }
+        self._checklist_mtimes: dict[str, float] = {
+            name: whitelist_mtime(self.checklist_paths[name])
+            for name, _, _ in CHECKLIST_GROUPS
+        }
         self.devices: dict[str, dict[str, Any]] = {}
         # Fetched once on the first successful refresh; the model never
         # changes until a reboot with different firmware.
@@ -94,8 +111,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._monitored_mtime = whitelist_mtime(self.monitored_path)
         self.aps = load_aps(self.ap_path)
         self._ap_mtime = whitelist_mtime(self.ap_path)
-        self.gateways = load_gateways(self.gateway_path)
-        self._gateway_mtime = whitelist_mtime(self.gateway_path)
+        for name, _, _ in CHECKLIST_GROUPS:
+            self.checklists[name] = load_checklist(self.checklist_paths[name])
+            self._checklist_mtimes[name] = whitelist_mtime(self.checklist_paths[name])
         await self.async_request_refresh()
 
     def _async_refresh_lists_if_changed(self) -> None:
@@ -119,35 +137,38 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("AP list changed, reloading")
             self.aps = load_aps(self.ap_path)
             self._ap_mtime = current
-        current = whitelist_mtime(self.gateway_path)
-        if current and current != self._gateway_mtime:
-            _LOGGER.debug("Gateway list changed, reloading")
-            self.gateways = load_gateways(self.gateway_path)
-            self._gateway_mtime = current
+        for name, _, _ in CHECKLIST_GROUPS:
+            current = whitelist_mtime(self.checklist_paths[name])
+            if current and current != self._checklist_mtimes[name]:
+                _LOGGER.debug("%s list changed, reloading", name.title())
+                self.checklists[name] = load_checklist(self.checklist_paths[name])
+                self._checklist_mtimes[name] = current
 
-    async def _async_gateway_snapshot(self) -> dict[str, Any]:
-        """Aggregate gateway/proxy states from probes and HA entities.
+    async def _async_checklist_snapshot(self, group: str) -> dict[str, Any]:
+        """Aggregate one checklist from direct probes and HA entity states.
 
         IP entries are probed directly (no third-party tracker needed);
         entity entries are read from the HA state machine. Neither touches
-        the router admin session.
+        the router admin session, so this keeps working during the
+        session-yield period.
         """
-        if not self.gateways:
+        entries = self.checklists.get(group) or []
+        if not entries:
             return {
-                "gateway_all_count": 0,
-                "gateway_online_count": 0,
-                "gateway_offline_count": 0,
-                "gateway_devices": [],
+                f"{group}_all_count": 0,
+                f"{group}_online_count": 0,
+                f"{group}_offline_count": 0,
+                f"{group}_devices": [],
             }
         probe_indexes = [
             index
-            for index, item in enumerate(self.gateways)
+            for index, item in enumerate(entries)
             if item.get("kind") == "probe"
         ]
         probe_results = await asyncio.gather(
             *(
                 async_probe_ap(
-                    str(self.gateways[index].get("target") or ""),
+                    str(entries[index].get("target") or ""),
                     timeout=AP_PROBE_TIMEOUT,
                 )
                 for index in probe_indexes
@@ -160,7 +181,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
 
         devices: list[dict[str, Any]] = []
-        for index, item in enumerate(self.gateways):
+        for index, item in enumerate(entries):
             if item.get("kind") == "probe":
                 online = online_by_index.get(index, False)
                 state = "online" if online else "offline"
@@ -183,10 +204,10 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         online_count = sum(1 for device in devices if device["online"])
         return {
-            "gateway_all_count": len(devices),
-            "gateway_online_count": online_count,
-            "gateway_offline_count": len(devices) - online_count,
-            "gateway_devices": devices,
+            f"{group}_all_count": len(devices),
+            f"{group}_online_count": online_count,
+            f"{group}_offline_count": len(devices) - online_count,
+            f"{group}_devices": devices,
         }
 
     async def _async_ap_snapshot(self) -> dict[str, Any]:
@@ -205,13 +226,15 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # APs are probed over the LAN, so this works even while the router
         # admin session is yielded to a human web-UI login.
         ap_data = await self._async_ap_snapshot()
-        gateway_data = await self._async_gateway_snapshot()
+        checklist_data: dict[str, Any] = {}
+        for name, _, _ in CHECKLIST_GROUPS:
+            checklist_data.update(await self._async_checklist_snapshot(name))
 
         # Session yield: while another client owns the admin session, keep
         # serving the last snapshot without touching the router at all.
         if self._yield_until is not None:
             if datetime.now() < self._yield_until and self._last_good_data:
-                return {**self._last_good_data, **ap_data, **gateway_data}
+                return {**self._last_good_data, **ap_data, **checklist_data}
             # Grace period is over: take the session back proactively so
             # the following query does not fail (and yield again).
             self._yield_until = None
@@ -242,7 +265,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "until then.",
                     SESSION_YIELD_MINUTES,
                 )
-                return {**self._last_good_data, **ap_data, **gateway_data}
+                return {**self._last_good_data, **ap_data, **checklist_data}
             # No prior data (startup) — this is a genuine login failure,
             # retry once as before.
             try:
@@ -340,7 +363,7 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         data = {
             **ap_data,
-            **gateway_data,
+            **checklist_data,
             "devices": devices,
             "router_model": router_model or "unknown",
             "router_info": router_info,
