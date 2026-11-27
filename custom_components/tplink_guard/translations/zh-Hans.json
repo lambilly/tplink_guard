@@ -11,7 +11,7 @@
           "password": "密码",
           "scan_interval": "刷新周期（秒）",
           "whitelist_path": "白名单文件路径",
-          "watchlist_path": "手机名单文件路径",
+          "watchlist_path": "客人手机名单文件路径",
           "match_by": "匹配方式",
           "monitored_path": "设备终端名单文件路径",
           "ap_path": "AP 名单文件路径",
@@ -34,7 +34,7 @@
   "services": {
     "reload_whitelist": {
       "name": "重新加载名单",
-      "description": "立即从配置的文件路径重新读取白名单、手机名单、监控终端名单、AP、网关、ASR、服务器与网络基础设施名单，并刷新所有实体状态。"
+      "description": "立即从配置的文件路径重新读取白名单、客人手机名单、设备终端名单、AP、网关、ASR、服务器与网络基础设施名单，并刷新所有实体状态。"
     }
   },
   "options": {
@@ -44,7 +44,7 @@
         "data": {
           "scan_interval": "刷新周期（秒）",
           "whitelist_path": "白名单文件路径",
-          "watchlist_path": "手机名单文件路径",
+          "watchlist_path": "客人手机名单文件路径",
           "match_by": "匹配方式",
           "monitored_path": "设备终端名单文件路径",
           "ap_path": "AP 名单文件路径",

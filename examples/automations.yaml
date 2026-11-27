@@ -30,18 +30,17 @@
       data:
         notification_id: tplink_guard_unknown
 
-- alias: 主路由手机终端上线提醒
-  description: 手机名单中的终端上线时推送通知
+- alias: 客人手机终端上线提醒
+  description: 客人手机名单中的终端上线时推送通知
   mode: single
   trigger:
     - platform: numeric_state
-      entity_id: sensor.tplink_guard_phone_online_count
+      entity_id: sensor.tplink_guard_guest_visit_count
       above: 0
   action:
     - service: persistent_notification.create
       data:
-        notification_id: tplink_guard_phone_online
-        title: 手机终端已上线
+        notification_id: tplink_guard_guest_phone_online
+        title: 客人手机终端已上线
         message: >-
-          手机终端 IP：{{ state_attr('sensor.tplink_guard_phone_online_count', 'devices')
-          | map(attribute='ip') | join(', ') }}
+          在家客人：{{ state_attr('sensor.tplink_guard_guest_visit_count', 'guest_home_list') }}

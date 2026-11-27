@@ -54,7 +54,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def _user_schema(
     default_whitelist: str,
-    default_phone: str,
+    default_guestphone: str,
     default_monitored: str,
     default_ap: str,
     default_gateway: str,
@@ -75,7 +75,7 @@ def _user_schema(
                 CONF_WHITELIST_PATH, default=default_whitelist
             ): str,
             vol.Optional(
-                CONF_WATCHLIST_PATH, default=default_phone
+                CONF_WATCHLIST_PATH, default=default_guestphone
             ): str,
             vol.Optional(
                 CONF_MONITORED_PATH, default=default_monitored
@@ -147,7 +147,9 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         errors: dict[str, str] = {}
         default_whitelist = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_WHITELIST_FILENAME)
-        default_phone = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_PHONE_FILENAME)
+        default_guestphone = self.hass.config.path(
+            DEFAULT_LISTS_RELDIR, DEFAULT_PHONE_FILENAME
+        )
         default_monitored = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_MONITORED_FILENAME)
         default_ap = self.hass.config.path(DEFAULT_LISTS_RELDIR, DEFAULT_AP_FILENAME)
         default_gateway = self.hass.config.path(
@@ -193,7 +195,7 @@ class TPLinkGuardConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=_user_schema(
                 default_whitelist,
-                default_phone,
+                default_guestphone,
                 default_monitored,
                 default_ap,
                 default_gateway,

@@ -11,7 +11,7 @@
           "password": "Password",
           "scan_interval": "Scan interval (seconds)",
           "whitelist_path": "Whitelist file path",
-          "watchlist_path": "Phone list file path",
+          "watchlist_path": "Guest phone list file path",
           "match_by": "Match by",
           "monitored_path": "Device terminals list file path",
           "ap_path": "AP list file path",
@@ -34,7 +34,7 @@
   "services": {
     "reload_whitelist": {
       "name": "Reload lists",
-      "description": "Re-read all configured list files (whitelist, phone, device, AP, gateway, ASR, server, router) and refresh all entities."
+      "description": "Re-read all configured list files (whitelist, guest phone, device, AP, gateway, ASR, server, router) and refresh all entities."
     }
   },
   "options": {
@@ -44,7 +44,7 @@
         "data": {
           "scan_interval": "Scan interval (seconds)",
           "whitelist_path": "Whitelist file path",
-          "watchlist_path": "Phone list file path",
+          "watchlist_path": "Guest phone list file path",
           "match_by": "Match by",
           "monitored_path": "Device terminals list file path",
           "ap_path": "AP list file path",

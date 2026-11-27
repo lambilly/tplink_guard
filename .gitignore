@@ -5,6 +5,7 @@ tplink_guard_phone.txt
 tplink_guard_monitored.txt
 whitelist.txt
 phone.txt
+guestphone.txt
 monitored.txt
 ap.txt
 tplink_guard_ap.txt

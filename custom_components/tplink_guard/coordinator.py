@@ -402,8 +402,8 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             mac_checklist_data.update(await self._async_mac_checklist_snapshot(name, devices))
 
         unknown = [device for device in devices if not device["known"]]
-        phone_online = [device for device in devices if device["watched"]]
-        phone_offline = self.watchlist.count - len(phone_online)
+        guest_phone_online = [device for device in devices if device["watched"]]
+        guest_phone_offline = self.watchlist.count - len(guest_phone_online)
         if unknown:
             _LOGGER.debug("Unknown online devices: %s", [d["ip"] for d in unknown])
 
@@ -491,10 +491,10 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "known_count": len(devices) - len(unknown),
             "unknown_count": len(unknown),
             "unknown_devices": unknown,
-            "phone_count": self.watchlist.count,
-            "phone_online_count": len(phone_online),
-            "phone_offline_count": max(phone_offline, 0),
-            "phone_online": phone_online,
+            "guest_phone_count": self.watchlist.count,
+            "guest_phone_online_count": len(guest_phone_online),
+            "guest_phone_offline_count": max(guest_phone_offline, 0),
+            "guest_phone_online": guest_phone_online,
             "monitored_count": len(monitored_macs),
             "monitored_online_count": monitored_online_count,
             "monitored_offline_count": monitored_offline_count,

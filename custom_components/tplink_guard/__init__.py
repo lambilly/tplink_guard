@@ -80,6 +80,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LEGACY_NAMES = {
         "tplink_guard_whitelist.txt": DEFAULT_WHITELIST_FILENAME,
         "tplink_guard_phone.txt": DEFAULT_PHONE_FILENAME,
+        "phone.txt": DEFAULT_PHONE_FILENAME,
         "tplink_guard_monitored.txt": DEFAULT_MONITORED_FILENAME,
         "monitored.txt": DEFAULT_MONITORED_FILENAME,
         "tplink_guard_watchlist.txt": DEFAULT_PHONE_FILENAME,
@@ -118,7 +119,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 value = new_path
         return value
 
-    phone_path = _config_path(
+    guestphone_path = _config_path(
         options.get(CONF_WATCHLIST_PATH, entry.data.get(CONF_WATCHLIST_PATH))
     )
     coordinator = TPLinkGuardCoordinator(
@@ -127,7 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         whitelist_path=_config_path(
             options.get(CONF_WHITELIST_PATH, entry.data.get(CONF_WHITELIST_PATH))
         ),
-        watchlist_path=phone_path,
+        watchlist_path=guestphone_path,
         match_by=options.get(CONF_MATCH_BY, entry.data.get(CONF_MATCH_BY, DEFAULT_MATCH_BY)),
         scan_interval=options.get(
             CONF_SCAN_INTERVAL,

@@ -11,7 +11,7 @@
           "password": "密码",
           "scan_interval": "刷新周期（秒）",
           "whitelist_path": "白名单文件路径",
-          "watchlist_path": "Phone list file path",
+          "watchlist_path": "Guest phone list file path",
           "match_by": "匹配方式",
           "monitored_path": "Device terminals list file path",
           "ap_path": "AP list file path",
@@ -34,7 +34,7 @@
   "services": {
     "reload_whitelist": {
       "name": "重新加载名单",
-      "description": "Re-read all configured list files (whitelist, phone, device, AP, gateway, ASR, server, router) and refresh all entities."
+      "description": "Re-read all configured list files (whitelist, guest phone, device, AP, gateway, ASR, server, router) and refresh all entities."
     }
   },
   "options": {
@@ -44,7 +44,7 @@
         "data": {
           "scan_interval": "刷新周期（秒）",
           "whitelist_path": "白名单文件路径",
-          "watchlist_path": "Phone list file path",
+          "watchlist_path": "Guest phone list file path",
           "match_by": "匹配方式",
           "monitored_path": "Device terminals list file path",
           "ap_path": "AP list file path",

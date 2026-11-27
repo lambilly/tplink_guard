@@ -33,12 +33,11 @@ OBJECT_IDS: dict[str, str] = {
     "online_count": "online_all_count",
     # One entity per group: the other counts / IP lists are attributes.
     # Whitelist / static / unknown counts now live on online_all_count.
-    "watched_online_count": "phone_online_count",
     "monitored_online_count": "device_online_count",
     # Guest visit sensor follows HA's natural prefixed id:
     # sensor.tplink_guard_guest_visit_count.
     "guest_visit": "guest_visit_count",
-    "router_model": "router_model",
+    "router_model": "firmware_model",
     "ap_online_count": "ap_online_count",
     "gateway_online_count": "gateway_online_count",
     "asr_online_count": "asr_online_count",
@@ -60,11 +59,6 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
         key="online_count", name="Online All Count", icon="mdi:router-network"
     ),
     SensorEntityDescription(
-        key="watched_online_count",
-        name="Phone Online Count",
-        icon="mdi:eye-outline",
-    ),
-    SensorEntityDescription(
         key="guest_visit",
         name="Guest Visit Count",
         icon="mdi:account-arrow-left-outline",
@@ -76,7 +70,7 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     ),
     SensorEntityDescription(
         key="router_model",
-        name="Router Model",
+        name="Firmware Model",
         icon="mdi:chip",
     ),
     SensorEntityDescription(
@@ -107,7 +101,10 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
 )
 
 # Attribute keys of the guest visit sensor, identical to the legacy
-# Node-RED flow output so dashboards keep working unchanged.
+# Node-RED flow output so dashboards keep working unchanged. The former
+# phone online count attributes all duplicate these figures (all / online
+# / offline counts and lists, update_time) and were merged here, with the
+# phone-prefixed copies removed instead of being emitted twice.
 GUEST_ATTRS = (
     "guest_all_count",
     "guest_all_list",
@@ -139,7 +136,7 @@ def guest_stats(data: dict[str, Any]) -> dict[str, Any]:
     watchlist = data.get(ATTR_WATCHLIST) or []
     online_macs = {
         _clean_mac(device.get("mac"))
-        for device in data.get("phone_online") or []
+        for device in data.get("guest_phone_online") or []
     }
 
     all_list: list[str] = []
@@ -278,10 +275,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
         key = self.entity_description.key
         if key == "guest_visit":
             return guest_stats(data)["guest_home_count"]
-        # The coordinator data keys were renamed watched_* -> phone_*; the
-        # entity key (and thus unique id) stays stable for the registry.
-        if key == "watched_online_count":
-            return data.get("phone_online_count")
         return data.get(key)
 
     @property
@@ -309,37 +302,6 @@ class TPLinkGuardSensor(CoordinatorEntity, SensorEntity):
                 "device_all_list": "｜".join(names) or "无",
                 "device_online_list": "｜".join(online) or "无",
                 "device_offline_list": "｜".join(offline) or "无",
-                "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
-                ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
-            }
-        if key == "watched_online_count":
-            online_devices = data.get("phone_online") or []
-            roster = data.get(ATTR_WATCHLIST) or []
-            online_macs = {str(device.get("mac") or "") for device in online_devices}
-            roster_names = [
-                str(item.get("nickname") or item.get("name") or "") for item in roster
-            ]
-            online_names = [
-                str(
-                    device.get("display_name")
-                    or device.get("hostname")
-                    or device.get("mac")
-                    or ""
-                )
-                for device in online_devices
-            ]
-            offline_names = [
-                str(item.get("nickname") or item.get("name") or "")
-                for item in roster
-                if str(item.get("mac") or "") not in online_macs
-            ]
-            return {
-                "phone_all_count": len(roster),
-                "phone_online_count": data.get("phone_online_count"),
-                "phone_offline_count": data.get("phone_offline_count"),
-                "phone_all_list": "｜".join(roster_names) or "无",
-                "phone_online_list": "｜".join(online_names) or "无",
-                "phone_offline_list": "｜".join(offline_names) or "无",
                 "update_time": _format_time(data.get(ATTR_LAST_UPDATE)),
                 ATTR_LAST_UPDATE: data.get(ATTR_LAST_UPDATE),
             }
