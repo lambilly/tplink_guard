@@ -119,10 +119,13 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             hosts = await self.client.async_get_host_info()
         except RouterAuthError:
-            if self.client.stok:
+            if self._last_good_data:
                 # We HAD a working session that is now gone — someone else
                 # (web UI login) took over the single-session router.
-                # Yield instead of stealing it back immediately.
+                # Yield instead of stealing it back immediately. Note: the
+                # client clears its stok on auth errors, so we cannot check
+                # client.stok here; a prior successful snapshot is the
+                # reliable "session was working" signal.
                 self._yield_until = datetime.now() + timedelta(
                     minutes=SESSION_YIELD_MINUTES
                 )
@@ -133,10 +136,9 @@ class TPLinkGuardCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "until then.",
                     SESSION_YIELD_MINUTES,
                 )
-                if self._last_good_data:
-                    return dict(self._last_good_data)
-            # No previous session (startup) — this is a genuine login
-            # failure, retry once as before.
+                return dict(self._last_good_data)
+            # No prior data (startup) — this is a genuine login failure,
+            # retry once as before.
             try:
                 await self.client.async_login()
                 hosts = await self.client.async_get_host_info()
